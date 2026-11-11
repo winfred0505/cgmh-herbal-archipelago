@@ -358,7 +358,7 @@
       }
     `
   });
-  const skyDome = new THREE.Mesh(new THREE.SphereGeometry(165, 32, 16), skyMat);
+  const skyDome = new THREE.Mesh(new THREE.SphereGeometry(240, 32, 16), skyMat);
   skyDome.position.copy(cityCenter);
   scene.add(skyDome);
 
@@ -378,7 +378,16 @@
   fillLight.position.set(cityCenter.x + 22, 18, cityCenter.z - 22);
   scene.add(fillLight);
 
-  // 海面波光 Shader
+  // 海床底層 (讓半透明海水下的魚群、海龜、鬼蝠魟清晰呈現溫暖淺海層次)
+  const seabedMesh = new THREE.Mesh(
+    new THREE.CircleGeometry(240, 64),
+    new THREE.MeshBasicMaterial({ color: 0x7ab8c4 })
+  );
+  seabedMesh.rotation.x = -Math.PI / 2;
+  seabedMesh.position.set(cityCenter.x, WATER_Y - 0.36, cityCenter.z);
+  scene.add(seabedMesh);
+
+  // 海面波光 Shader (略帶清澈微透感，方便觀察水中生物游動與躍出水面)
   const waterUniforms = {
     uColor: { value: new THREE.Color(0xa4d4da) },
     uDeep: { value: new THREE.Color(0x6fa9b8) },
@@ -387,6 +396,8 @@
     uCenter: { value: new THREE.Vector2(cityCenter.x, cityCenter.z) }
   };
   const waterMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
     uniforms: waterUniforms,
     vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
     fragmentShader: `
@@ -402,11 +413,11 @@
         col += w1 * 0.02 + w2 * 0.008;
         float glint = smoothstep(0.96, 1.0, w2 * 0.5 + 0.5) * 0.06 * (1.0 - uNight) * (1.0 - smoothstep(16.0, 42.0, d));
         col += glint;
-        gl_FragColor = vec4(col, 1.0);
+        gl_FragColor = vec4(col, 0.85);
       }
     `
   });
-  const waterMesh = new THREE.Mesh(new THREE.CircleGeometry(150, 64), waterMat);
+  const waterMesh = new THREE.Mesh(new THREE.CircleGeometry(240, 64), waterMat);
   waterMesh.rotation.x = -Math.PI / 2;
   waterMesh.position.set(cityCenter.x, WATER_Y, cityCenter.z);
   scene.add(waterMesh);
@@ -874,7 +885,7 @@
     return g;
   }
 
-  // 政策島風格 Chibi 3D 人物工廠 (藥師、醫師、主管、部務室專員、領藥民眾)
+  // 真實比例 3D 人物工廠 (藥師、醫師、主管、部務室專員、領藥民眾 — 總高約 0.255 單位，對應約 170cm 真實人體比例)
   function createChibiPerson(role = "pharmacist", accentHex = 0xdb6a41, seed = 1) {
     const g = new THREE.Group();
     const r = mulberry32(seed);
@@ -907,98 +918,119 @@
     const vestMat = new THREE.MeshStandardMaterial({ color: vestHex, roughness: 0.65 });
     const pantsMat = new THREE.MeshStandardMaterial({ color: pantsHex, roughness: 0.8 });
 
-    // 腳底陰影圓盤
+    // 貼地自然陰影 (移除誇張厚圓柱底座)
     const shadow = new THREE.Mesh(
-      new THREE.CircleGeometry(0.11, 14),
-      new THREE.MeshBasicMaterial({ color: 0x241c16, transparent: true, opacity: 0.25, depthWrite: false })
+      new THREE.CircleGeometry(0.055, 12),
+      new THREE.MeshBasicMaterial({ color: 0x241c16, transparent: true, opacity: 0.22, depthWrite: false })
     );
     shadow.rotation.x = -Math.PI / 2;
-    shadow.position.y = 0.005;
+    shadow.position.y = 0.004;
     g.add(shadow);
 
-    // 雙腿
-    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.13, 0.056), pantsMat);
-    legL.position.set(-0.034, 0.065, 0);
+    // 修長雙腿 (0.00 ~ 0.105)
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.105, 0.026), pantsMat);
+    legL.position.set(-0.016, 0.052, 0);
     legL.castShadow = true;
     g.add(legL);
 
-    const legR = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.13, 0.056), pantsMat);
-    legR.position.set(0.034, 0.065, 0);
+    const legR = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.105, 0.026), pantsMat);
+    legR.position.set(0.016, 0.052, 0);
     legR.castShadow = true;
     g.add(legR);
 
-    // 身體與醫事背心／白袍
-    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.076, 0.16, 10), coatMat);
-    torso.position.set(0, 0.20, 0);
+    // 軀幹與醫事白袍／背心 (0.10 ~ 0.205)
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.031, 0.102, 10), coatMat);
+    torso.position.set(0, 0.152, 0);
     torso.castShadow = true;
     g.add(torso);
 
-    const badgeBand = new THREE.Mesh(new THREE.BoxGeometry(0.138, 0.095, 0.118), vestMat);
-    badgeBand.position.set(0, 0.205, 0.005);
+    const badgeBand = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.056, 0.048), vestMat);
+    badgeBand.position.set(0, 0.158, 0.002);
     badgeBand.castShadow = true;
     g.add(badgeBand);
 
     // 識別證
-    const idCard = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.044, 0.012), MAT.cream);
-    idCard.position.set(0.028, 0.21, 0.066);
+    const idCard = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.02, 0.006), MAT.cream);
+    idCard.position.set(0.014, 0.162, 0.027);
     g.add(idCard);
 
-    // 雙手與手持中藥箱／檢驗箱
-    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.11, 0.04), coatMat);
-    armL.position.set(-0.086, 0.20, 0);
+    // 修長雙臂與手持藥箱
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.088, 0.02), coatMat);
+    armL.position.set(-0.039, 0.15, 0);
     armL.castShadow = true;
     g.add(armL);
 
-    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.11, 0.04), coatMat);
-    armR.position.set(0.086, 0.20, 0.02);
+    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.088, 0.02), coatMat);
+    armR.position.set(0.039, 0.15, 0.008);
     armR.castShadow = true;
     g.add(armR);
 
     if (r() < 0.75) {
       const carryBox = new THREE.Mesh(
-        new THREE.BoxGeometry(0.085, 0.065, 0.065),
+        new THREE.BoxGeometry(0.042, 0.032, 0.032),
         new THREE.MeshStandardMaterial({ color: accentHex, roughness: 0.55 })
       );
-      carryBox.position.set(0, 0.185, 0.088);
+      carryBox.position.set(0, 0.138, 0.042);
       carryBox.castShadow = true;
       g.add(carryBox);
     }
 
-    // 頭部與五官
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.095, 14, 12), skinMat);
-    head.scale.set(1.04, 0.98, 0.96);
-    head.position.set(0, 0.355, 0);
+    // 真實頭身比頭部 (中心 0.228，總高約 0.258 單位)
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.028, 12, 10), skinMat);
+    head.scale.set(0.96, 1.05, 0.96);
+    head.position.set(0, 0.228, 0);
     head.castShadow = true;
     g.add(head);
 
     const hair = new THREE.Mesh(
-      new THREE.SphereGeometry(0.103, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.58),
+      new THREE.SphereGeometry(0.030, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.58),
       hairMat
     );
-    hair.position.set(0, 0.365, -0.006);
-    hair.rotation.x = -0.25;
+    hair.position.set(0, 0.232, -0.002);
+    hair.rotation.x = -0.22;
     hair.castShadow = true;
     g.add(hair);
 
     // 藥師帽／醫事帽
     if (role === "pharmacist" || role === "nurse" || role === "qc") {
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.078, 0.04, 12), coatMat);
-      cap.position.set(0, 0.455, 0);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.026, 0.016, 12), coatMat);
+      cap.position.set(0, 0.26, 0);
       g.add(cap);
-      const cross = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.024, 0.01), MAT.coral);
-      cross.position.set(0, 0.455, 0.076);
+      const cross = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.01, 0.004), MAT.coral);
+      cross.position.set(0, 0.26, 0.026);
       g.add(cross);
-    }
-
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1e1918 });
-    for (const sx of [-0.035, 0.035]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), eyeMat);
-      eye.position.set(sx, 0.355, 0.086);
-      g.add(eye);
     }
 
     g.userData.parts = { legL, legR, armL, armR, head };
     return g;
+  }
+
+  // 海域水中生物群組與動態清單
+  const marineGroup = new THREE.Group();
+  marineGroup.name = "marineGroup";
+  scene.add(marineGroup);
+  const marineCreatures = [];
+
+  // 依據真實世界生物體型換算微縮模型高度 (以建築樓高 0.75~0.95、成人身高 0.26 為基準)
+  function getRealisticModelHeight(relPath, fallbackScale = 0.26) {
+    if (relPath.startsWith("characters/")) {
+      return 0.26; // 成人身高 ~170cm -> 0.26 單位 (約為 2~3 層樓建築高度的 1/3)
+    }
+    if (relPath.includes("SunBear")) return 0.20;      // 台灣黑熊 (~130cm)
+    if (relPath.includes("Doe")) return 0.19;          // 台灣梅花鹿 (~120cm)
+    if (relPath.includes("BlueSwan")) return 0.135;    // 藍天鵝 (~88cm)
+    if (relPath.includes("SacredIbis")) return 0.125;  // 埃及聖䴉／水鳥 (~80cm)
+    if (relPath.includes("Eagle")) return 0.135;       // 盤旋黑鳶 (~85cm 展翼視覺尺度)
+    if (relPath.includes("Duck")) return 0.082;        // 綠頭水鴨 (~50cm)
+    if (relPath.includes("Swallowtail")) return 0.048; // 台灣鳳蝶 (精緻蝴蝶比例)
+    if (relPath.includes("Bee")) return 0.038;         // 採蜜野蜂 (精緻蜜蜂比例)
+    if (relPath.includes("TreeHigh")) return 1.02;     // 高大喬木 (~6.5m)
+    if (relPath.includes("TreeMed")) return 0.82;      // 中型喬木 (~5.2m)
+    if (relPath.includes("TreeLow")) return 0.66;      // 低矮林木 (~4.2m)
+    if (relPath.includes("Bush") || relPath.includes("Grass") || relPath.includes("Reed")) {
+      return 0.24; // 灌木與草本植栽 (~1.5m)
+    }
+    return fallbackScale;
   }
 
   function loadAndPlaceAllGlbModels() {
@@ -1016,7 +1048,7 @@
       "animals/Swallowtail.glb"
     ]);
 
-    const glbCache = new Map(); // relPath -> { status: "loading"|"ready", template, height, center, minY, callbacks: [] }
+    const glbCache = new Map(); // relPath -> { status: "loading"|"ready", meshes, height, center, minY, callbacks: [] }
 
     function attachInstanceFromEntry(entry, holder, worldPos, targetHeight, rotY, animKind, userData) {
       const instGroup = new THREE.Group();
@@ -1036,7 +1068,7 @@
       instGroup.scale.setScalar(s);
       instGroup.position.set(
         -entry.center.x * s,
-        -entry.minY * s + (animKind === "char" || animKind === "animal_ground" ? 0.024 : 0),
+        -entry.minY * s,
         -entry.center.z * s
       );
       holder.add(instGroup);
@@ -1058,16 +1090,16 @@
       holder.rotation.y = rotY;
       parentGroup.add(holder);
 
-      // 若為角色或地面動物，加入溫暖微縮底座圓盤使其在島面上清晰醒目
+      // 以自然柔和的貼地接觸陰影取代原本過大的厚圓柱底座，讓人物與動物比例真實貼地
       if (animKind === "char" || animKind === "animal_ground") {
-        const padCol = animKind === "char" ? 0xdb6a41 : 0x5e9a6f;
-        const baseRing = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.16, 0.18, 0.024, 16),
-          new THREE.MeshStandardMaterial({ color: padCol, roughness: 0.65 })
+        const shadowRadius = Math.max(0.028, Math.min(0.085, targetHeight * 0.25));
+        const contactShadow = new THREE.Mesh(
+          new THREE.CircleGeometry(shadowRadius, 12),
+          new THREE.MeshBasicMaterial({ color: 0x241c16, transparent: true, opacity: 0.22, depthWrite: false })
         );
-        baseRing.position.y = 0.012;
-        baseRing.receiveShadow = true;
-        holder.add(baseRing);
+        contactShadow.rotation.x = -Math.PI / 2;
+        contactShadow.position.y = 0.004;
+        holder.add(contactShadow);
       }
 
       const existing = glbCache.get(relPath);
@@ -1107,7 +1139,6 @@
         const isZUp = Z_UP_ANIMALS.has(relPath);
 
         rawMeshes.forEach((srcMesh) => {
-          // 複製純幾何體並移除會因逆綁定矩陣異常而壓扁模型的 skinIndex/skinWeight
           const geom = srcMesh.geometry.clone();
           if (geom.attributes.skinIndex) geom.deleteAttribute("skinIndex");
           if (geom.attributes.skinWeight) geom.deleteAttribute("skinWeight");
@@ -1158,7 +1189,26 @@
       return holder;
     }
 
-    // 1) 為每座島嶼放置專屬 GLB 藥師、主管、民眾、植物與台灣生態動物 (放大尺寸並加上浮動名牌與動態巡邏)
+    // 輔助函式：若動物為小型物種 (水鴨、鳳蝶、蜜蜂)，自動以真實比例生成 3 隻自然小群落
+    function spawnRealisticAnimalWithFlock(file, parentGroup, pos, rotY, animKind, userData) {
+      const targetH = getRealisticModelHeight(file, 0.16);
+      spawnGlb(file, parentGroup, pos, targetH, rotY, animKind, userData);
+
+      const isSmallFlock = file.includes("Duck") || file.includes("Swallowtail") || file.includes("Bee");
+      if (isSmallFlock) {
+        const offsets = [
+          [0.11, 0.02, 0.09, 0.88],
+          [-0.09, -0.01, 0.12, 0.82]
+        ];
+        offsets.forEach(([ox, oy, oz, scaleMul], k) => {
+          const companionPos = new THREE.Vector3(pos.x + ox, pos.y + oy, pos.z + oz);
+          spawnGlb(file, parentGroup, companionPos, targetH * scaleMul, rotY + (k + 1) * 0.7, animKind, userData);
+        });
+      }
+      return targetH;
+    }
+
+    // 1) 為每座島嶼放置專屬 GLB 藥師、主管、民眾、植物與台灣生態動物 (採用貼近真實世界的比例)
     const EXTRA_TREES = [
       "nature/TreeHigh001.glb",
       "nature/TreeHigh002.glb",
@@ -1174,14 +1224,14 @@
       "nature/Reed001.glb"
     ];
     const EXTRA_ANIMALS = [
-      { file: "animals/Doe.glb", label: "台灣梅花鹿", kind: "animal_ground", h: 0.52 },
-      { file: "animals/SunBear.glb", label: "台灣黑熊", kind: "animal_ground", h: 0.54 },
-      { file: "animals/BlueSwan.glb", label: "藍天鵝", kind: "animal_ground", h: 0.46 },
-      { file: "animals/SacredIbis.glb", label: "埃及聖䴉／水鳥", kind: "animal_ground", h: 0.46 },
-      { file: "animals/Duck.glb", label: "綠頭水鴨", kind: "animal_ground", h: 0.38 },
-      { file: "animals/Eagle.glb", label: "盤旋黑鳶", kind: "animal_fly", h: 0.48 },
-      { file: "animals/Swallowtail.glb", label: "台灣鳳蝶", kind: "animal_fly", h: 0.36 },
-      { file: "animals/Bee.glb", label: "採蜜野蜂", kind: "animal_fly", h: 0.32 }
+      { file: "animals/Doe.glb", label: "台灣梅花鹿", kind: "animal_ground" },
+      { file: "animals/SunBear.glb", label: "台灣黑熊", kind: "animal_ground" },
+      { file: "animals/BlueSwan.glb", label: "藍天鵝", kind: "animal_ground" },
+      { file: "animals/SacredIbis.glb", label: "埃及聖䴉／水鳥", kind: "animal_ground" },
+      { file: "animals/Duck.glb", label: "綠頭水鴨群", kind: "animal_ground" },
+      { file: "animals/Eagle.glb", label: "盤旋黑鳶", kind: "animal_fly" },
+      { file: "animals/Swallowtail.glb", label: "台灣鳳蝶群", kind: "animal_fly" },
+      { file: "animals/Bee.glb", label: "採蜜野蜂群", kind: "animal_fly" }
     ];
 
     DATA.islands.forEach((isl, idx) => {
@@ -1189,21 +1239,18 @@
       const islSeed = (idx + 1) * 97;
       const rnd = mulberry32(islSeed);
 
-      // (A) 島嶼專屬 GLB 模型 (人物、動物、代表樹木)
+      // (A) 島嶼專屬 GLB 模型 (人物、動物、代表樹木 — 真實比例)
       (isl.glbModels || []).forEach((spec, mIdx) => {
         const isAnimal = spec.file.startsWith("animals/");
         const isNature = spec.file.startsWith("nature/");
-        const isFly = spec.file.includes("Eagle") || spec.file.includes("Swallowtail") || spec.file.includes("Bee");
+        const isEagle = spec.file.includes("Eagle");
+        const isInsect = spec.file.includes("Swallowtail") || spec.file.includes("Bee");
+        const isFly = isEagle || isInsect;
         const animKind = isNature ? "plant" : isAnimal ? (isFly ? "animal_fly" : "animal_ground") : "char";
 
-        // 提高人物、動物與樹木的微縮模型高度，使其在全景與近景皆清晰立體
-        const targetH = isNature
-          ? Math.max(0.95, (spec.scale || 0.48) * 2.1)
-          : isAnimal
-          ? Math.max(0.48, (spec.scale || 0.36) * 1.45)
-          : Math.max(0.68, (spec.scale || 0.52) * 1.35);
-
-        const baseY = isFly ? TOP + 0.85 : TOP + 0.04;
+        const targetH = getRealisticModelHeight(spec.file, spec.scale || 0.26);
+        // 黑鳶飛翔於高空 (TOP + 0.65)，鳳蝶與野蜂翩翩飛舞於花叢／藥圃高度 (TOP + 0.22)
+        const baseY = isEagle ? TOP + 0.65 : isInsect ? TOP + 0.22 : TOP + 0.04;
         const pos = new THREE.Vector3(
           c.x + (spec.offset ? spec.offset[0] : 0.8),
           baseY,
@@ -1211,19 +1258,17 @@
         );
         const rotY = Math.atan2(cityCenter.x - pos.x, cityCenter.z - pos.z) + (mIdx - 1) * 0.35;
 
-        spawnGlb(
-          spec.file,
-          charactersGroup,
-          pos,
-          targetH,
-          rotY,
-          animKind,
-          {
-            pickType: "glb",
-            label: spec.label,
-            island: isl
-          }
-        );
+        const uData = {
+          pickType: "glb",
+          label: spec.label,
+          island: isl
+        };
+
+        if (isAnimal) {
+          spawnRealisticAnimalWithFlock(spec.file, charactersGroup, pos, rotY, animKind, uData);
+        } else {
+          spawnGlb(spec.file, charactersGroup, pos, targetH, rotY, animKind, uData);
+        }
 
         // 註冊 3D 角色／動物／植物浮動名牌錨點
         ecoLabelTargets.push({
@@ -1232,7 +1277,7 @@
           kind: isNature ? "plant" : isAnimal ? "animal" : "char",
           icon: isNature ? "🌿" : isAnimal ? "🐾" : "🧑‍⚕️",
           isPrimary: mIdx === 0 || isAnimal,
-          worldPos: pos.clone().add(new THREE.Vector3(0, targetH + 0.16, 0))
+          worldPos: pos.clone().add(new THREE.Vector3(0, targetH + 0.10, 0))
         });
       });
 
@@ -1246,7 +1291,7 @@
             treeFile,
             charactersGroup,
             new THREE.Vector3(tx, TOP + 0.04, tz),
-            0.88 + (t % 2) * 0.22,
+            getRealisticModelHeight(treeFile, 0.85),
             idx * 0.9 + t,
             "plant",
             { pickType: "glb", label: `${isl.shortName}・本草林木`, island: isl }
@@ -1259,25 +1304,26 @@
           plantFile,
           charactersGroup,
           new THREE.Vector3(bx, TOP + 0.04, bz),
-          0.32 + (t % 2) * 0.1,
+          getRealisticModelHeight(plantFile, 0.24),
           idx * 1.3 + t,
           "plant",
           { pickType: "glb", label: `${isl.shortName}・藥用草本植栽`, island: isl }
         );
       }
 
-      // (C) 若該島原本無 GLB 動物（如台北、林口、部務室、雲林、大同、鳳山），補上專屬台灣動物使其每島皆有動物生態！
+      // (C) 若該島原本無 GLB 動物，補上專屬台灣動物使其每島皆有真實比例動物生態
       const hasAnimalAlready = (isl.glbModels || []).some((m) => m.file.startsWith("animals/"));
       const extraAnimal = EXTRA_ANIMALS[idx % EXTRA_ANIMALS.length];
       if (!hasAnimalAlready) {
         const [ax, az] = hexVertex(c.x, c.z, R * 0.66, (idx + 4) % 6);
-        const ay = extraAnimal.kind === "animal_fly" ? TOP + 0.88 : TOP + 0.04;
+        const isEagle = extraAnimal.file.includes("Eagle");
+        const isInsect = extraAnimal.file.includes("Swallowtail") || extraAnimal.file.includes("Bee");
+        const ay = isEagle ? TOP + 0.65 : isInsect ? TOP + 0.22 : TOP + 0.04;
         const animalPos = new THREE.Vector3(ax, ay, az);
-        spawnGlb(
+        const realH = spawnRealisticAnimalWithFlock(
           extraAnimal.file,
           charactersGroup,
           animalPos,
-          extraAnimal.h,
           idx * 0.8,
           extraAnimal.kind,
           { pickType: "glb", label: `${isl.shortName}・${extraAnimal.label}`, island: isl }
@@ -1287,7 +1333,7 @@
           label: `${isl.shortName}・${extraAnimal.label}`,
           kind: "animal",
           icon: "🐾",
-          worldPos: animalPos.clone().add(new THREE.Vector3(0, extraAnimal.h + 0.15, 0))
+          worldPos: animalPos.clone().add(new THREE.Vector3(0, realH + 0.10, 0))
         });
       }
 
@@ -1348,7 +1394,7 @@
         }
       }
 
-      // (E) 政策島風格 (people.js)：每座島配置 3 位沿環島步道行走之 Chibi 藥師／主管／領藥民眾
+      // (E) 每座島配置 3 位沿環島步道行走之真實比例藥師／主管／領藥民眾 (高 ~0.255 單位)
       const islandRoles = ["pharmacist", "doctor", "citizen"];
       for (let pIdx = 0; pIdx < 3; pIdx++) {
         const role = islandRoles[pIdx % islandRoles.length];
@@ -1359,7 +1405,7 @@
           : `${isl.county}領藥民眾`;
         const accent = [0xdb6a41, 0x3e7c8c, 0x5e9a6f][(idx + pIdx) % 3];
         const person = createChibiPerson(role, accent, islSeed + pIdx * 19);
-        person.scale.setScalar(1.28);
+        person.scale.setScalar(1.0);
         person.traverse((ch) => {
           if (ch.isMesh) {
             ch.userData = { pickType: "glb", label: roleTitle, island: isl };
@@ -1372,7 +1418,7 @@
         const ringWaypoints = [];
         for (let k = 0; k < 6; k++) {
           const [vx, vz] = hexVertex(c.x, c.z, RING_R * (0.86 - pIdx * 0.05), k);
-          ringWaypoints.push(new THREE.Vector3(vx, TOP + 0.045, vz));
+          ringWaypoints.push(new THREE.Vector3(vx, TOP + 0.042, vz));
         }
         walkingPeople.push({
           group: person,
@@ -1385,14 +1431,14 @@
       }
     });
 
-    // 2) 在跨海拱橋上配置政策島風格跨院協作行人 (攜帶藥箱／檢驗箱往返各院區)
+    // 2) 在跨海拱橋上配置跨院協作行人 (真實人體比例，攜帶藥箱／檢驗箱往返各院區)
     DATA.flows.forEach((f, fIdx) => {
       const hqCenter = islandCenters.get("headquarters");
       const firstTarget = islandCenters.get(f.targets[0]);
       if (!hqCenter || !firstTarget) return;
       const colHex = parseInt(f.color.replace("#", "0x"), 16) || 0xdb6a41;
       const walker = createChibiPerson("pharmacist", colHex, 700 + fIdx * 13);
-      walker.scale.setScalar(1.32);
+      walker.scale.setScalar(1.0);
       const hqIsl = DATA.islands.find((i) => i.id === "headquarters");
       walker.traverse((ch) => {
         if (ch.isMesh) {
@@ -1408,17 +1454,17 @@
       walkingPeople.push({
         group: walker,
         waypoints: [
-          hqCenter.clone().setY(TOP + 0.06),
-          firstTarget.clone().setY(TOP + 0.06)
+          hqCenter.clone().setY(TOP + 0.05),
+          firstTarget.clone().setY(TOP + 0.05)
         ],
         loop: false,
         progress: (fIdx * 0.19) % 1,
-        speed: 0.12,
+        speed: 0.11,
         phase: fIdx * 1.1
       });
     });
 
-    // 3) 在遠景海面上空點綴 Nature Kit 立體雲朵與遠山島礁 (移至外圍海面避免遮擋 13 座主島)
+    // 3) 在遠景海面上空點綴 Nature Kit 立體雲朵與遠山島礁
     const cloudCoords = [
       [-13.5, 7.2, -13, "nature/Cloud001.glb", 0.68],
       [14.0, 7.6, -10, "nature/Cloud002.glb", 0.72],
@@ -1437,8 +1483,450 @@
     mountainCoords.forEach(([x, y, z, file, sc], i) => {
       spawnGlb(file, worldGroup, new THREE.Vector3(cityCenter.x + x, y, cityCenter.z + z), sc, i * 1.2, "prop", null);
     });
+
+    // 4) 在近海淺灣配置悠游於海面上的真實比例水鳥 (藍天鵝與綠頭水鴨群)
+    const seaBirdSpots = [
+      { islId: "keelung", file: "animals/Duck.glb", label: "基隆港灣綠頭水鴨群", dx: -3.2, dz: -1.8 },
+      { islId: "linkou", file: "animals/BlueSwan.glb", label: "桃園近海悠游藍天鵝", dx: -3.5, dz: 1.2 },
+      { islId: "chiayi", file: "animals/Duck.glb", label: "嘉南近海綠頭水鴨群", dx: -3.3, dz: 0.9 },
+      { islId: "kaohsiung", file: "animals/BlueSwan.glb", label: "澄清湖畔延伸海域藍天鵝", dx: 3.3, dz: 1.5 }
+    ];
+    seaBirdSpots.forEach((spot, sIdx) => {
+      const c = islandCenters.get(spot.islId);
+      const isl = DATA.islands.find((i) => i.id === spot.islId);
+      if (!c || !isl) return;
+      const pos = new THREE.Vector3(c.x + spot.dx, WATER_Y + 0.01, c.z + spot.dz);
+      spawnRealisticAnimalWithFlock(
+        spot.file,
+        marineGroup,
+        pos,
+        sIdx * 1.4,
+        "animal_ground",
+        { pickType: "glb", label: spot.label, island: isl }
+      );
+    });
   }
   loadAndPlaceAllGlbModels();
+
+  // =========================================================================
+  // 6.5 台灣海域水中生物系統 (3D Marine Life: 鯨魚噴水、躍水海豚群、綠蠵龜、鬼蝠魟、珊瑚礁魚群)
+  // =========================================================================
+  function createWhaleMesh(scale = 1.22, colorHex = 0x2c4c64) {
+    // 大翅鯨／抹香鯨：真實比例體長約 1.2~1.35 單位 (對應 8~9 公尺，約為成人身高 0.26 的 4.8 倍)
+    const g = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.45, metalness: 0.08, flatShading: true });
+    const bellyMat = new THREE.MeshStandardMaterial({ color: 0xdce6ec, roughness: 0.55, flatShading: true });
+
+    // 主軀幹 (+Z 為前進方向)
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.18, 14, 12), bodyMat);
+    body.scale.set(0.95, 0.78, 2.65);
+    body.castShadow = true;
+    g.add(body);
+
+    // 腹摺白色胸腹
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.165, 12, 10), bellyMat);
+    belly.scale.set(0.88, 0.55, 2.3);
+    belly.position.set(0, -0.045, 0.05);
+    g.add(belly);
+
+    // 尾柄與寬大水平尾鰭 (Flukes)
+    const tailPivot = new THREE.Group();
+    tailPivot.position.set(0, 0.01, -0.42);
+    g.add(tailPivot);
+
+    const peduncle = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.36, 10), bodyMat);
+    peduncle.rotation.x = -Math.PI / 2;
+    peduncle.position.set(0, 0, -0.14);
+    tailPivot.add(peduncle);
+
+    const flukeL = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.024, 0.13), bodyMat);
+    flukeL.position.set(-0.13, 0, -0.32);
+    flukeL.rotation.y = 0.28;
+    tailPivot.add(flukeL);
+
+    const flukeR = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.024, 0.13), bodyMat);
+    flukeR.position.set(0.13, 0, -0.32);
+    flukeR.rotation.y = -0.28;
+    tailPivot.add(flukeR);
+
+    // 背鰭與修長胸鰭
+    const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.14, 7), bodyMat);
+    dorsal.position.set(0, 0.15, -0.15);
+    dorsal.rotation.x = -0.38;
+    g.add(dorsal);
+
+    for (const side of [-1, 1]) {
+      const pec = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.022, 0.095), bellyMat);
+      pec.position.set(side * 0.22, -0.04, 0.08);
+      pec.rotation.z = side * -0.25;
+      pec.rotation.y = side * -0.22;
+      g.add(pec);
+    }
+
+    // 換氣噴水柱粒子群 (Spout Mist)
+    const spoutGroup = new THREE.Group();
+    spoutGroup.position.set(0, 0.15, 0.22);
+    const mistMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.78, depthWrite: false });
+    for (let i = 0; i < 6; i++) {
+      const drop = new THREE.Mesh(new THREE.SphereGeometry(0.028 + i * 0.012, 8, 6), mistMat);
+      drop.position.set((i % 2 === 0 ? 1 : -1) * i * 0.012, i * 0.065, -i * 0.015);
+      spoutGroup.add(drop);
+    }
+    g.add(spoutGroup);
+
+    // 海面白色浪花環
+    const ripple = new THREE.Mesh(
+      new THREE.RingGeometry(0.32, 0.48, 24),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false })
+    );
+    ripple.rotation.x = -Math.PI / 2;
+    ripple.position.y = 0.02;
+    g.add(ripple);
+
+    g.scale.setScalar(scale);
+    g.userData.parts = { tailPivot, spoutGroup, ripple };
+    return g;
+  }
+
+  function createDolphinMesh(isPinkWhite = false, scale = 1.0) {
+    // 中華白海豚／瓶鼻海豚：真實比例體長約 0.35 單位 (~2.3m)
+    const g = new THREE.Group();
+    const topHex = isPinkWhite ? 0xf2cfd6 : 0x4f7c96;
+    const bodyMat = new THREE.MeshStandardMaterial({ color: topHex, roughness: 0.38, metalness: 0.1, flatShading: true });
+    const bellyMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.48, flatShading: true });
+
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 10), bodyMat);
+    body.scale.set(0.88, 0.82, 2.75);
+    body.castShadow = true;
+    g.add(body);
+
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.056, 10, 8), bellyMat);
+    belly.scale.set(0.82, 0.65, 2.4);
+    belly.position.set(0, -0.016, 0.01);
+    g.add(belly);
+
+    // 海豚吻突 (Rostrum)
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.024, 0.095, 8), bodyMat);
+    beak.rotation.x = Math.PI / 2;
+    beak.position.set(0, -0.008, 0.18);
+    g.add(beak);
+
+    // 鐮刀型背鰭
+    const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.085, 6), bodyMat);
+    dorsal.position.set(0, 0.068, -0.02);
+    dorsal.rotation.x = -0.35;
+    g.add(dorsal);
+
+    // 胸鰭與水平尾鰭
+    for (const side of [-1, 1]) {
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.01, 0.042), bodyMat);
+      fin.position.set(side * 0.062, -0.022, 0.04);
+      fin.rotation.z = side * -0.3;
+      fin.rotation.y = side * -0.25;
+      g.add(fin);
+    }
+
+    const tailFluke = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.012, 0.05), bodyMat);
+    tailFluke.position.set(0, 0, -0.175);
+    g.add(tailFluke);
+
+    g.scale.setScalar(scale);
+    g.userData.parts = { tailFluke };
+    return g;
+  }
+
+  function createSeaTurtleMesh(scale = 1.0) {
+    // 台灣綠蠵龜：真實比例背甲長約 0.17 單位 (~1.1m)
+    const g = new THREE.Group();
+    const shellMat = new THREE.MeshStandardMaterial({ color: 0x4b6e40, roughness: 0.55, flatShading: true });
+    const patternMat = new THREE.MeshStandardMaterial({ color: 0x8a6236, roughness: 0.6, flatShading: true });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0x7ea16b, roughness: 0.65, flatShading: true });
+
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(0.072, 10, 8), shellMat);
+    shell.scale.set(1.05, 0.42, 1.28);
+    shell.castShadow = true;
+    g.add(shell);
+
+    const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.062, 0.022, 6), patternMat);
+    ridge.scale.set(1.0, 1.0, 1.22);
+    ridge.position.y = 0.024;
+    g.add(ridge);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.024, 8, 8), skinMat);
+    head.scale.set(0.9, 0.8, 1.25);
+    head.position.set(0, 0.004, 0.105);
+    g.add(head);
+
+    const flipperL = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.01, 0.036), skinMat);
+    flipperL.position.set(-0.075, -0.004, 0.035);
+    flipperL.rotation.y = 0.25;
+    g.add(flipperL);
+
+    const flipperR = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.01, 0.036), skinMat);
+    flipperR.position.set(0.075, -0.004, 0.035);
+    flipperR.rotation.y = -0.25;
+    g.add(flipperR);
+
+    for (const side of [-1, 1]) {
+      const backFlip = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.008, 0.024), skinMat);
+      backFlip.position.set(side * 0.048, -0.006, -0.078);
+      backFlip.rotation.y = side * -0.45;
+      g.add(backFlip);
+    }
+
+    g.scale.setScalar(scale);
+    g.userData.parts = { flipperL, flipperR };
+    return g;
+  }
+
+  function createMantaRayMesh(scale = 1.0) {
+    // 洋流鬼蝠魟 (Manta Ray)：真實比例翼展約 0.34 單位 (~2.2m)
+    const g = new THREE.Group();
+    const topMat = new THREE.MeshStandardMaterial({ color: 0x283c4f, roughness: 0.45, flatShading: true });
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xeaf2f8, roughness: 0.55, flatShading: true });
+
+    const disc = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.035, 4), topMat);
+    disc.scale.set(1.3, 0.6, 1.45);
+    disc.rotation.y = Math.PI / 4;
+    g.add(disc);
+
+    const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.012, 0.13), topMat);
+    wingL.position.set(-0.09, 0, 0.01);
+    wingL.rotation.y = 0.32;
+    g.add(wingL);
+
+    const wingR = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.012, 0.13), topMat);
+    wingR.position.set(0.09, 0, 0.01);
+    wingR.rotation.y = -0.32;
+    g.add(wingR);
+
+    // 頭鰭與細長尾鞭
+    for (const side of [-1, 1]) {
+      const horn = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.012, 0.055), whiteMat);
+      horn.position.set(side * 0.036, 0.002, 0.11);
+      g.add(horn);
+    }
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.002, 0.18, 6), topMat);
+    tail.rotation.x = Math.PI / 2;
+    tail.position.set(0, 0, -0.17);
+    g.add(tail);
+
+    g.scale.setScalar(scale);
+    g.userData.parts = { wingL, wingR };
+    return g;
+  }
+
+  function createSingleFishMesh(colorHex = 0xff7b47, size = 0.072) {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.35, metalness: 0.1, flatShading: true });
+    const body = new THREE.Mesh(new THREE.OctahedronGeometry(size * 0.45, 1), mat);
+    body.scale.set(0.45, 0.72, 1.85);
+    g.add(body);
+
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(size * 0.32, size * 0.55, 3), mat);
+    tail.rotation.x = Math.PI / 2;
+    tail.position.set(0, 0, -size * 0.9);
+    g.add(tail);
+    g.userData.tail = tail;
+    return g;
+  }
+
+  function buildMarineLife() {
+    const registerPickable = (root, label, islId) => {
+      const isl = DATA.islands.find((i) => i.id === islId) || DATA.islands[0];
+      root.traverse((ch) => {
+        if (ch.isMesh) {
+          ch.userData = { pickType: "glb", label, island: isl };
+          pickables.push(ch);
+        }
+      });
+    };
+
+    // (1) 🐋 外海巡游大翅鯨／抹香鯨 (3 頭，含換氣噴水柱與海面波紋)
+    const whaleSpecs = [
+      { cx: cityCenter.x + 8.5, cz: cityCenter.z - 12.2, rx: 3.2, rz: 2.1, speed: 0.22, phase: 0.2, col: 0x2b4c65, scale: 1.24, islId: "keelung", label: "🐋 台灣東北海域・大翅鯨（浮出換氣噴水）" },
+      { cx: cityCenter.x + 9.2, cz: cityCenter.z + 1.5,  rx: 2.6, rz: 3.8, speed: 0.19, phase: 2.1, col: 0x345870, scale: 1.18, islId: "taichung", label: "🐋 台灣海峽洋流・巡游大翅鯨" },
+      { cx: cityCenter.x - 8.2, cz: cityCenter.z + 11.8, rx: 3.4, rz: 2.2, speed: 0.21, phase: 4.0, col: 0x264358, scale: 1.30, islId: "kaohsiung", label: "🐋 南台灣巴士海峽・大翅鯨母子領航" }
+    ];
+    whaleSpecs.forEach((ws) => {
+      const whale = createWhaleMesh(ws.scale, ws.col);
+      whale.position.set(ws.cx, WATER_Y - 0.02, ws.cz);
+      marineGroup.add(whale);
+      registerPickable(whale, ws.label, ws.islId);
+
+      const labelAnchor = new THREE.Vector3(ws.cx, WATER_Y + 0.38, ws.cz);
+      ecoLabelTargets.push({
+        islandId: ws.islId,
+        label: ws.label,
+        kind: "animal",
+        icon: "🐋",
+        isPrimary: true,
+        worldPos: labelAnchor
+      });
+
+      marineCreatures.push({
+        kind: "whale",
+        group: whale,
+        cx: ws.cx,
+        cz: ws.cz,
+        rx: ws.rx,
+        rz: ws.rz,
+        speed: ws.speed,
+        phase: ws.phase,
+        labelAnchor
+      });
+    });
+
+    // (2) 🐬 躍水海豚群 (5 群共 12 隻海豚：包含台灣海峽特有「中華白海豚」與「瓶鼻海豚」，會成群躍出水面並激起白色水花環)
+    const dolphinPods = [
+      { cx: cityCenter.x - 6.2, cz: cityCenter.z - 8.5, rx: 2.1, rz: 1.6, speed: 0.65, pink: false, count: 3, islId: "tamsui", label: "🐬 淡水河口外海・躍水瓶鼻海豚群" },
+      { cx: cityCenter.x - 6.8, cz: cityCenter.z - 1.2, rx: 1.9, rz: 2.3, speed: 0.62, pink: true,  count: 3, islId: "taoyuan", label: "🐬 桃園近海・台灣海峽中華白海豚群" },
+      { cx: cityCenter.x - 6.4, cz: cityCenter.z + 5.2, rx: 2.2, rz: 1.8, speed: 0.68, pink: true,  count: 2, islId: "yunlin", label: "🐬 雲嘉外海・珍貴中華白海豚" },
+      { cx: cityCenter.x + 5.8, cz: cityCenter.z - 5.4, rx: 2.0, rz: 1.9, speed: 0.64, pink: false, count: 2, islId: "taipei", label: "🐬 北台灣海灣・瓶鼻海豚群" },
+      { cx: cityCenter.x + 5.2, cz: cityCenter.z + 9.2, rx: 2.3, rz: 1.7, speed: 0.66, pink: false, count: 2, islId: "fengshan", label: "🐬 高屏近海・躍浪海豚群" }
+    ];
+    dolphinPods.forEach((pod, pIdx) => {
+      const podAnchor = new THREE.Vector3(pod.cx, WATER_Y + 0.35, pod.cz);
+      ecoLabelTargets.push({
+        islandId: pod.islId,
+        label: pod.label,
+        kind: "animal",
+        icon: "🐬",
+        isPrimary: true,
+        worldPos: podAnchor
+      });
+
+      for (let m = 0; m < pod.count; m++) {
+        const dolphin = createDolphinMesh(pod.pink, 1.0 - m * 0.08);
+        marineGroup.add(dolphin);
+        registerPickable(dolphin, pod.label, pod.islId);
+
+        const splashRing = new THREE.Mesh(
+          new THREE.RingGeometry(0.08, 0.17, 18),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.65, side: THREE.DoubleSide, depthWrite: false })
+        );
+        splashRing.rotation.x = -Math.PI / 2;
+        splashRing.position.set(pod.cx, WATER_Y + 0.012, pod.cz);
+        marineGroup.add(splashRing);
+
+        marineCreatures.push({
+          kind: "dolphin",
+          group: dolphin,
+          splashRing,
+          cx: pod.cx + (m - 1) * 0.35,
+          cz: pod.cz + (m % 2) * 0.28,
+          rx: pod.rx,
+          rz: pod.rz,
+          speed: pod.speed,
+          phase: pIdx * 1.3 + m * 0.55,
+          labelAnchor: m === 0 ? podAnchor : null
+        });
+      }
+    });
+
+    // (3) 🐢 台灣綠蠵龜 (8 隻，悠游於各島淺海珊瑚礁區，划動前肢並偶爾探頭換氣)
+    const turtleIslIds = ["keelung", "tamsui", "linkou", "headquarters", "taichung", "chiayi", "tainan", "kaohsiung"];
+    turtleIslIds.forEach((islId, tIdx) => {
+      const c = islandCenters.get(islId);
+      if (!c) return;
+      const ang = (tIdx * 0.95) + 0.4;
+      const tx = c.x + Math.cos(ang) * (R * 1.34);
+      const tz = c.z + Math.sin(ang) * (R * 1.34);
+      const turtle = createSeaTurtleMesh(0.95 + (tIdx % 2) * 0.12);
+      turtle.position.set(tx, WATER_Y - 0.025, tz);
+      marineGroup.add(turtle);
+      const label = `🐢 ${DATA.islands.find((i) => i.id === islId)?.shortName || "近海"}・台灣綠蠵龜`;
+      registerPickable(turtle, label, islId);
+
+      const tAnchor = new THREE.Vector3(tx, WATER_Y + 0.22, tz);
+      if (tIdx % 2 === 0) {
+        ecoLabelTargets.push({
+          islandId: islId,
+          label,
+          kind: "animal",
+          icon: "🐢",
+          isPrimary: false,
+          worldPos: tAnchor
+        });
+      }
+
+      marineCreatures.push({
+        kind: "turtle",
+        group: turtle,
+        cx: tx,
+        cz: tz,
+        rx: 0.75,
+        rz: 0.65,
+        speed: 0.38 + (tIdx % 3) * 0.06,
+        phase: tIdx * 1.1,
+        labelAnchor: tIdx % 2 === 0 ? tAnchor : null
+      });
+    });
+
+    // (4) 🦅 洋流鬼蝠魟 (5 隻，在島際海道間優雅滑翔拍翼)
+    const mantaSpots = [
+      { cx: cityCenter.x + 3.8, cz: cityCenter.z - 9.0, islId: "keelung", label: "🌊 北海岸洋流・鬼蝠魟" },
+      { cx: cityCenter.x - 4.2, cz: cityCenter.z - 3.6, islId: "linkou", label: "🌊 桃園海道・優雅鬼蝠魟" },
+      { cx: cityCenter.x + 3.6, cz: cityCenter.z + 0.8, islId: "taichung", label: "🌊 中部海域・鬼蝠魟" },
+      { cx: cityCenter.x - 4.0, cz: cityCenter.z + 7.2, islId: "chiayi", label: "🌊 雲嘉海道・鬼蝠魟" },
+      { cx: cityCenter.x + 3.5, cz: cityCenter.z + 11.2, islId: "kaohsiung", label: "🌊 南台灣海域・鬼蝠魟" }
+    ];
+    mantaSpots.forEach((ms, mIdx) => {
+      const manta = createMantaRayMesh(1.0);
+      manta.position.set(ms.cx, WATER_Y - 0.04, ms.cz);
+      marineGroup.add(manta);
+      registerPickable(manta, ms.label, ms.islId);
+
+      marineCreatures.push({
+        kind: "manta",
+        group: manta,
+        cx: ms.cx,
+        cz: ms.cz,
+        rx: 1.25,
+        rz: 0.95,
+        speed: 0.44,
+        phase: mIdx * 1.4
+      });
+    });
+
+    // (5) 🐟 環島淺灘珊瑚礁魚群／台灣飛魚群 (每座島嶼淺灘外環各配置 1 群共 13 群繽紛魚群，每群 7 尾同步迴游)
+    const FISH_PALETTE = [0xff6b4a, 0xffbe3b, 0x3ec6e0, 0xf78fb3, 0xff9f43];
+    DATA.islands.forEach((isl, idx) => {
+      const c = islandCenters.get(isl.id);
+      const schoolGroup = new THREE.Group();
+      const baseAng = (idx * 1.1) % (Math.PI * 2);
+      const sx = c.x + Math.cos(baseAng) * (R * 1.25);
+      const sz = c.z + Math.sin(baseAng) * (R * 1.25);
+      schoolGroup.position.set(sx, WATER_Y - 0.03, sz);
+      marineGroup.add(schoolGroup);
+
+      const fishList = [];
+      for (let f = 0; f < 7; f++) {
+        const col = FISH_PALETTE[(idx + f) % FISH_PALETTE.length];
+        const fish = createSingleFishMesh(col, 0.068 + (f % 3) * 0.01);
+        fish.position.set(
+          Math.cos((f / 7) * Math.PI * 2) * 0.22,
+          (f % 2) * 0.015,
+          Math.sin((f / 7) * Math.PI * 2) * 0.22
+        );
+        schoolGroup.add(fish);
+        fishList.push(fish);
+      }
+      registerPickable(schoolGroup, `🐟 ${isl.shortName}近海・珊瑚礁熱帶魚群`, isl.id);
+
+      marineCreatures.push({
+        kind: "fish_school",
+        group: schoolGroup,
+        fishList,
+        cx: c.x,
+        cz: c.z,
+        orbitR: R * 1.24,
+        speed: 0.28 + (idx % 3) * 0.05,
+        phase: idx * 0.85
+      });
+    });
+  }
+  buildMarineLife();
 
   // =========================================================================
   // 7. 八大跨院業務分工協作線 (3D Collaboration Flow Arcs & Animated Pulses)
@@ -1531,11 +2019,12 @@
       });
     });
 
-    // 建立每座島嶼之 3D 人物、動物與植物浮動小名牌
+    // 建立每座島嶼之 3D 人物、動物、植物與海域水中生物浮動小名牌
     ecoLabelTargets.forEach((target) => {
       const ecoBtn = document.createElement("button");
       ecoBtn.className = `eco-pin-label is-${target.kind}`;
-      ecoBtn.innerHTML = `<span>${target.icon}</span><span>${target.label}</span>`;
+      const cleanLabel = String(target.label || "").replace(/^(🐋|🐬|🐢|🌊|🐟|🐾|🌿|🧑‍⚕️)\s*/u, "");
+      ecoBtn.innerHTML = `<span>${target.icon}</span><span>${cleanLabel}</span>`;
       ecoBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         AudioFX.click(860);
@@ -1602,10 +2091,11 @@
       el.classList.toggle("selected", selectedBuildingId === bId);
     });
 
-    // 更新 3D 人物、動物、植物浮動名牌 (選取島嶼或拉近鏡頭時完整顯示；全景時精選代表生態／角色避免遮擋主名牌)
+    // 更新 3D 人物、動物、植物與海域水中生物浮動名牌
     ecoLabelEls.forEach(({ el, target }) => {
       const isSelectedIsl = selectedIslandId === target.islandId;
-      const showEco = charactersGroup.visible && (isSelectedIsl || camDist < 19.5);
+      const isMarineHighlight = target.icon === "🐋" || target.icon === "🐬";
+      const showEco = charactersGroup.visible && (isSelectedIsl || camDist < 19.5 || (showNames && isMarineHighlight));
       if (!showEco) {
         el.style.display = "none";
         return;
@@ -2440,7 +2930,7 @@
   $("#sidebar-toggle").onclick = () => {
     AudioFX.click(720);
     document.body.classList.toggle("sidebar-collapsed");
-    setTimeout(onResize, 300);
+    onResize();
   };
 
   $("#card-close").onclick = () => {
@@ -2489,7 +2979,10 @@
       if (kind === "names") showNames = active;
       if (kind === "pins") showPins = active;
       if (kind === "flows") updateFlowVisibility();
-      if (kind === "chars") charactersGroup.visible = active;
+      if (kind === "chars") {
+        charactersGroup.visible = active;
+        marineGroup.visible = active;
+      }
       if (kind === "bird") resetOverview(active);
       if (kind === "log") $("#log").hidden = !active;
     });
@@ -2544,14 +3037,27 @@
     });
   });
 
-  function onResize() {
-    const w = stage.clientWidth;
-    const h = stage.clientHeight;
-    camera.aspect = w / h;
+  // 記錄視窗與右側選單寬度偏移，確保收合右側選單時 3D 畫布 100% 滿版無空白且視角平滑置中
+  let currentViewOffsetX = window.innerWidth > 900 ? 174 : 0;
+
+  function applyCameraViewOffset(w, h) {
+    camera.aspect = w / Math.max(1, h);
+    if (Math.abs(currentViewOffsetX) > 0.5 && w > 900) {
+      camera.setViewOffset(w, h, Math.round(currentViewOffsetX), 0, w, h);
+    } else {
+      camera.clearViewOffset();
+    }
     camera.updateProjectionMatrix();
+  }
+
+  function onResize() {
+    const w = window.innerWidth || stage.clientWidth;
+    const h = window.innerHeight || stage.clientHeight;
     renderer.setSize(w, h);
+    applyCameraViewOffset(w, h);
   }
   window.addEventListener("resize", onResize);
+  onResize();
 
   // =========================================================================
   // 15. 主動畫渲染迴圈 (Animation Loop)
@@ -2562,6 +3068,16 @@
     requestAnimationFrame(animate);
     const dt = Math.min(0.05, clock.getDelta());
     const elapsed = clock.getElapsedTime();
+
+    // 確保畫布隨時 100% 貼合視窗，並平滑過渡右側選單展開／收合時的鏡頭中心偏移
+    const w = window.innerWidth || stage.clientWidth;
+    const h = window.innerHeight || stage.clientHeight;
+    const isCollapsed = document.body.classList.contains("sidebar-collapsed") || w <= 900;
+    const targetOffsetX = isCollapsed ? 0 : 174;
+    if (Math.abs(currentViewOffsetX - targetOffsetX) > 0.25) {
+      currentViewOffsetX += (targetOffsetX - currentViewOffsetX) * Math.min(1, dt * 11);
+      applyCameraViewOffset(w, h);
+    }
 
     waterUniforms.uTime.value = elapsed;
 
@@ -2579,21 +3095,21 @@
       const ent = animatedEntities[i];
       const t = elapsed * ent.speed + ent.phase;
       if (ent.kind === "char") {
-        // 藥師、主管與民眾：原地輕微呼吸律動與轉身巡視
-        ent.holder.position.y = ent.basePos.y + Math.abs(Math.sin(t * 2.4)) * 0.032;
+        // 藥師、主管與民眾：原地輕微呼吸律動與轉身巡視 (配合真實比例微調振幅)
+        ent.holder.position.y = ent.basePos.y + Math.abs(Math.sin(t * 2.4)) * 0.012;
         ent.holder.rotation.y = ent.baseRotY + Math.sin(t * 0.9) * 0.32;
       } else if (ent.kind === "animal_fly") {
-        // 飛行生態動物 (黑鳶、鳳蝶、蜜蜂)：在島嶼上空盤旋飛翔
-        const rOrbit = 0.28;
+        // 飛行生態動物 (黑鳶、鳳蝶、蜜蜂)：在島嶼上空或花圃上方盤旋飛翔
+        const rOrbit = 0.24;
         ent.holder.position.x = ent.basePos.x + Math.cos(t * 1.3) * rOrbit;
         ent.holder.position.z = ent.basePos.z + Math.sin(t * 1.3) * rOrbit;
-        ent.holder.position.y = ent.basePos.y + Math.sin(t * 2.8) * 0.08;
+        ent.holder.position.y = ent.basePos.y + Math.sin(t * 2.8) * 0.045;
         ent.holder.rotation.y = -t * 1.3 + Math.PI;
       } else if (ent.kind === "animal_ground") {
         // 地面與水岸動物 (梅花鹿、台灣黑熊、天鵝、聖䴉、水鴨)：漫步與點頭
-        ent.holder.position.x = ent.basePos.x + Math.cos(t * 0.8) * 0.1;
-        ent.holder.position.z = ent.basePos.z + Math.sin(t * 0.8) * 0.1;
-        ent.holder.position.y = ent.basePos.y + Math.abs(Math.sin(t * 2.2)) * 0.025;
+        ent.holder.position.x = ent.basePos.x + Math.cos(t * 0.8) * 0.08;
+        ent.holder.position.z = ent.basePos.z + Math.sin(t * 0.8) * 0.08;
+        ent.holder.position.y = ent.basePos.y + Math.abs(Math.sin(t * 2.2)) * 0.012;
         ent.holder.rotation.y = ent.baseRotY + Math.sin(t * 0.8) * 0.55;
       } else if (ent.kind === "plant") {
         // 樹木與本草植物：微風輕拂搖曳
@@ -2604,7 +3120,108 @@
       }
     }
 
-    // 更新環島步道與跨海拱橋上行走的 Chibi 藥師／主管／民眾 (對齊政策島 people.js)
+    // 更新海域水中生物 (鯨魚噴水、躍水海豚、台灣綠蠵龜、鬼蝠魟、珊瑚礁魚群)
+    for (let i = 0; i < marineCreatures.length; i++) {
+      const mc = marineCreatures[i];
+      const u = elapsed * mc.speed + mc.phase;
+
+      if (mc.kind === "whale") {
+        const x = mc.cx + Math.cos(u) * mc.rx;
+        const z = mc.cz + Math.sin(u) * mc.rz;
+        const dx = -Math.sin(u) * mc.rx;
+        const dz = Math.cos(u) * mc.rz;
+        const bob = Math.sin(u * 2.2);
+        mc.group.position.set(x, WATER_Y - 0.03 + bob * 0.055, z);
+        mc.group.rotation.y = Math.atan2(dx, dz);
+        mc.group.rotation.x = Math.cos(u * 2.2) * 0.09;
+
+        const parts = mc.group.userData.parts;
+        if (parts) {
+          parts.tailPivot.rotation.x = Math.sin(elapsed * 2.8 + mc.phase) * 0.24;
+          // 當鯨魚背部浮出水面 (bob > 0.15) 時噴出白色換氣水柱
+          const spoutActive = Math.max(0, (bob - 0.1) / 0.9);
+          parts.spoutGroup.visible = spoutActive > 0.04;
+          parts.spoutGroup.scale.set(
+            0.7 + spoutActive * 0.6,
+            0.3 + spoutActive * 1.35,
+            0.7 + spoutActive * 0.6
+          );
+          const pulse = (elapsed * 0.8 + mc.phase) % 1;
+          parts.ripple.scale.setScalar(0.85 + pulse * 0.75);
+        }
+        if (mc.labelAnchor) {
+          mc.labelAnchor.set(x, WATER_Y + 0.42, z);
+        }
+      } else if (mc.kind === "dolphin") {
+        const x = mc.cx + Math.cos(u) * mc.rx;
+        const z = mc.cz + Math.sin(u) * mc.rz;
+        const dx = -Math.sin(u) * mc.rx;
+        const dz = Math.cos(u) * mc.rz;
+        // 週期性拋物線躍出水面
+        const leapWave = Math.sin(u * 2.4);
+        const isLeaping = leapWave > 0;
+        const yOffset = isLeaping ? leapWave * 0.34 : leapWave * 0.04;
+        mc.group.position.set(x, WATER_Y - 0.01 + yOffset, z);
+        mc.group.rotation.y = Math.atan2(dx, dz);
+        mc.group.rotation.x = isLeaping ? -Math.cos(u * 2.4) * 0.58 : 0.05;
+
+        const parts = mc.group.userData.parts;
+        if (parts && parts.tailFluke) {
+          parts.tailFluke.rotation.x = Math.sin(elapsed * 7.5 + mc.phase) * 0.35;
+        }
+        if (mc.splashRing) {
+          mc.splashRing.position.set(x, WATER_Y + 0.012, z);
+          const ringScale = isLeaping ? 0.6 + (1 - leapWave) * 1.4 : 0.4;
+          mc.splashRing.scale.setScalar(ringScale);
+          mc.splashRing.visible = Math.abs(leapWave) < 0.45;
+        }
+        if (mc.labelAnchor) {
+          mc.labelAnchor.set(x, WATER_Y + 0.38, z);
+        }
+      } else if (mc.kind === "turtle") {
+        const x = mc.cx + Math.cos(u) * mc.rx;
+        const z = mc.cz + Math.sin(u) * mc.rz;
+        const dx = -Math.sin(u) * mc.rx;
+        const dz = Math.cos(u) * mc.rz;
+        mc.group.position.set(x, WATER_Y - 0.02 + Math.sin(u * 1.8) * 0.022, z);
+        mc.group.rotation.y = Math.atan2(dx, dz);
+        const parts = mc.group.userData.parts;
+        if (parts) {
+          const flap = Math.sin(elapsed * 3.6 + mc.phase) * 0.32;
+          parts.flipperL.rotation.z = flap;
+          parts.flipperR.rotation.z = -flap;
+        }
+        if (mc.labelAnchor) {
+          mc.labelAnchor.set(x, WATER_Y + 0.22, z);
+        }
+      } else if (mc.kind === "manta") {
+        const x = mc.cx + Math.cos(u) * mc.rx;
+        const z = mc.cz + Math.sin(u) * mc.rz;
+        const dx = -Math.sin(u) * mc.rx;
+        const dz = Math.cos(u) * mc.rz;
+        mc.group.position.set(x, WATER_Y - 0.032 + Math.sin(u * 1.5) * 0.018, z);
+        mc.group.rotation.y = Math.atan2(dx, dz);
+        const parts = mc.group.userData.parts;
+        if (parts) {
+          const wingFlap = Math.sin(elapsed * 3.2 + mc.phase) * 0.28;
+          parts.wingL.rotation.z = wingFlap;
+          parts.wingR.rotation.z = -wingFlap;
+        }
+      } else if (mc.kind === "fish_school") {
+        const x = mc.cx + Math.cos(u) * mc.orbitR;
+        const z = mc.cz + Math.sin(u) * mc.orbitR;
+        const dx = -Math.sin(u) * mc.orbitR;
+        const dz = Math.cos(u) * mc.orbitR;
+        mc.group.position.set(x, WATER_Y - 0.024 + Math.sin(u * 3.0) * 0.018, z);
+        mc.group.rotation.y = Math.atan2(dx, dz);
+        for (let f = 0; f < mc.fishList.length; f++) {
+          const fish = mc.fishList[f];
+          fish.rotation.y = Math.sin(elapsed * 8.0 + f) * 0.22;
+        }
+      }
+    }
+
+    // 更新環島步道與跨海拱橋上行走的真實比例藥師／主管／民眾
     for (let i = 0; i < walkingPeople.length; i++) {
       const wp = walkingPeople[i];
       wp.progress = (wp.progress + dt * wp.speed) % 1;
@@ -2628,7 +3245,7 @@
         }
         wp.group.position.lerpVectors(p0, p1, segU);
         const stepPhase = elapsed * 9.0 + wp.phase;
-        wp.group.position.y += Math.abs(Math.sin(stepPhase)) * 0.024;
+        wp.group.position.y += Math.abs(Math.sin(stepPhase)) * 0.012;
         const dx = p1.x - p0.x;
         const dz = p1.z - p0.z;
         if (Math.hypot(dx, dz) > 0.001) {
@@ -2636,11 +3253,11 @@
         }
         const parts = wp.group.userData.parts;
         if (parts) {
-          const swing = Math.sin(stepPhase) * 0.45;
+          const swing = Math.sin(stepPhase) * 0.42;
           parts.legL.rotation.x = swing;
           parts.legR.rotation.x = -swing;
-          parts.armL.rotation.x = -swing * 0.7;
-          parts.armR.rotation.x = swing * 0.7;
+          parts.armL.rotation.x = -swing * 0.65;
+          parts.armR.rotation.x = swing * 0.65;
         }
       }
     }
