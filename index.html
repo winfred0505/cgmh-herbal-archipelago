@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#DB6A41">
+  <title>長庚中藥群島｜長庚醫療財團法人中醫藥劑部・13 座台灣縣市微縮互動城市</title>
+  <meta name="description" content="依台灣縣市由北而南排列之 13 座長庚中醫藥劑部六角微縮群島，整合部務室（位於桃園）5 位人員職掌、各院區中藥科主管與 8 大業務分工協作線。">
+  <link rel="stylesheet" href="./styles.css">
+
+  <!-- 本地 Three.js r128、OrbitControls 與 GLTFLoader (零外部網路依賴，支援直接雙擊與 HTTP 伺服器) -->
+  <script src="./vendor/three.min.js"></script>
+  <script src="./vendor/OrbitControls.js"></script>
+  <script src="./vendor/GLTFLoader.js"></script>
+  <!-- 內嵌 3D 素材庫 (來自 D:\Users\User\Desktop\3D素材 之 34 組 GLB 模型，免伺服器無 CORS 限制) -->
+  <script src="./assets/models_bundle.js"></script>
+</head>
+<body>
+  <main id="app">
+    <!-- 3D 舞台與浮動標籤層 (對齊政策島 #stage + #labels 架構) -->
+    <div id="stage" role="img" aria-label="13 個六角形依台灣縣市排列組成之長庚中藥群島互動城市">
+      <div id="labels"></div>
+    </div>
+
+    <!-- 懸浮 3D 物件提示框 -->
+    <div id="tooltip"></div>
+
+    <!-- 左上角品牌標誌 (對齊政策島 header.brand) -->
+    <header class="brand">
+      <a class="brand-mark" href="#overview" id="brand-home" aria-label="回到長庚中藥群島全景">
+        CGMH<span>HERBAL.</span>
+      </a>
+      <div class="brand-r">
+        <h1>長庚中藥群島</h1>
+        <p class="candidate">
+          <span class="proj"><em>13 ISLES</em>中醫藥劑部</span>
+          <span>台灣縣市北南軸線・桃園部務室核心</span>
+        </p>
+      </div>
+    </header>
+
+    <!-- 左上角核心引言卡 (對齊政策島 .hero-note) -->
+    <div class="hero-note">
+      <div class="number">13</div>
+      <h2>一格院區<br>一座相連的中藥照護網</h2>
+      <p>依台灣縣市由北而南排列（部務室位於桃園），串聯 13 座島嶼、54 座業務微縮建築與 8 條跨院業務協作線。</p>
+    </div>
+
+    <!-- 頂部工具列 (對齊政策島 nav.toolbar) -->
+    <nav class="toolbar" aria-label="地圖操作">
+      <button id="btn-home" title="回到台灣 13 島全景">🧭 全景</button>
+      <button id="btn-tour" title="由北而南自動巡航 13 座中藥島嶼">🎬 北南巡島</button>
+      <button id="btn-matrix" title="檢視中醫藥劑部組織架構與業務分工總表">📊 業務總覽表</button>
+      <button id="btn-quiz-modal" title="開啟中醫藥劑部隨堂互動測驗">🎯 隨堂測驗</button>
+      <button id="btn-audio" title="切換互動音效">🔊 音效</button>
+      <button id="sidebar-toggle" title="展開或收合右側清單">☰ 清單</button>
+    </nav>
+
+    <!-- 右上角時段與顯示圖層切換器 (對齊政策島 .hud) -->
+    <div class="hud" id="hud" aria-label="城市狀態與顯示選項">
+      <div class="toggles" role="toolbar" aria-label="顯示選項">
+        <div class="seg" role="group" aria-label="時段">
+          <button data-time="360" title="清晨 06:00">🌅 清晨</button>
+          <button data-time="600" class="active" title="白天 10:00">☀️ 白天</button>
+          <button data-time="1080" title="黃昏 18:00">🌇 黃昏</button>
+          <button data-time="1260" title="夜晚 21:00">🌙 夜晚</button>
+        </div>
+        <div class="seg" role="group" aria-label="顯示圖層">
+          <button class="tg active" data-toggle="names" aria-pressed="true" title="顯示島嶼名牌">🏷️ 名牌</button>
+          <button class="tg active" data-toggle="pins" aria-pressed="true" title="顯示微縮建築編號">📍 建築號</button>
+          <button class="tg active" data-toggle="flows" aria-pressed="true" title="顯示跨院業務協作線">🌈 協作線</button>
+          <button class="tg active" data-toggle="chars" aria-pressed="true" title="顯示 3D 藥師與生態模型">🧑‍⚕️ 3D角色</button>
+          <button class="tg" data-toggle="bird" aria-pressed="false" title="切換台灣地圖正俯視鳥瞰角">🦅 鳥瞰</button>
+          <button class="tg" data-toggle="log" aria-pressed="false" title="開啟中藥部即時運作日誌">📋 日誌</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右側完整索引清單 (對齊政策島 aside#sidebar.sidebar) -->
+    <aside id="sidebar" class="sidebar" aria-label="完整院區、部務室人員與業務協作清單">
+      <div class="side-head">
+        <div class="eyebrow">CGMH TCM PHARMACY INDEX</div>
+        <h2>把體系中藥業務，連起來。</h2>
+        <p>13 座台灣縣市島嶼 ／ 54 個業務據點 ／ 8 條業務分工線<br>點選任一院區或部務室人員，走進微縮中藥風景。</p>
+        <button type="button" class="heart-quiz-entry" id="sidebar-quiz-trigger">
+          <span class="heart-quiz-entry-title">中醫藥劑部業務大挑戰！</span>
+          <span class="heart-quiz-entry-lead">檢測你對各院區主管、部務室五人職掌與八大業務分工的熟悉度。</span>
+          <i aria-hidden="true">›</i>
+        </button>
+        <input id="search" class="search" type="search" aria-label="搜尋院區、主管、人員或業務關鍵字" placeholder="搜尋院區、主管、部務室人員、馬兜鈴酸、總倉…">
+        <div class="side-tabs">
+          <button id="tab-islands" class="active">13 座島嶼</button>
+          <button id="tab-staff">部務室 5 人</button>
+          <button id="tab-flows">協作線 8</button>
+        </div>
+      </div>
+      <div id="tree" class="tree"></div>
+    </aside>
+
+    <!-- 選取島嶼／建築／人員詳情卡片 (對齊政策島 article#card.card) -->
+    <article id="card" class="card" hidden aria-label="選取項目詳細資料">
+      <button class="close" id="card-close" aria-label="關閉詳細資料">×</button>
+      <div id="card-content"></div>
+    </article>
+
+    <!-- 左側城市運作日誌 (對齊政策島 aside#log.log) -->
+    <aside class="log" id="log" hidden aria-label="中醫藥劑部運作日誌">
+      <div class="log-head">
+        <div>
+          <div class="eyebrow">PHARMACY LIVE LOG</div>
+          <h3>體系中藥協作日誌</h3>
+        </div>
+        <button id="log-close" aria-label="關閉日誌">×</button>
+      </div>
+      <div class="log-body">
+        <ol id="log-list"></ol>
+      </div>
+    </aside>
+
+    <!-- 左下角三合一控制台：01 中藥部的一天 / 02 部務室五人職掌 / 03 台灣縣市分群 (對齊政策島 section.controls) -->
+    <section class="controls" aria-label="時間與業務篩選">
+      <div class="control-tabs" role="tablist">
+        <button class="active" role="tab" aria-selected="true" data-panel="day">01 中藥部的一天</button>
+        <button role="tab" aria-selected="false" data-panel="staff">02 部務室五人職掌</button>
+        <button role="tab" aria-selected="false" data-panel="region">03 台灣縣市分群</button>
+        <div class="status" id="status">
+          <span class="st" style="--c:#db6a41"><i></i><b>13</b>座島嶼</span>
+          <span class="st" style="--c:#b8920f"><i></i><b>54</b>個據點</span>
+          <span class="st" style="--c:#3e7c8c"><i></i><b>8</b>條協作</span>
+          <span class="st" style="--c:#5e9a6f"><i></i><b id="glb-count-badge">34</b>件3D素材</span>
+        </div>
+      </div>
+
+      <!-- Panel 1: 24h 時間軸 -->
+      <div class="panel active" id="panel-day" role="tabpanel">
+        <div class="day-row">
+          <button id="day-play" class="play" aria-label="播放日夜循環">▶</button>
+          <output id="clock">10:00</output>
+          <input id="day-slider" type="range" min="0" max="1440" step="10" value="600" aria-label="時間滑桿">
+          <span id="period-badge" style="font-size:12px;font-weight:800;color:var(--muted);">☀️ 白天門診尖峰</span>
+        </div>
+      </div>
+
+      <!-- Panel 2: 部務室五人職掌快篩 -->
+      <div class="panel" id="panel-staff" role="tabpanel">
+        <div class="chip-row" id="staff-filter-chips"></div>
+      </div>
+
+      <!-- Panel 3: 台灣縣市區域快篩 -->
+      <div class="panel" id="panel-region" role="tabpanel">
+        <div class="chip-row" id="region-filter-chips">
+          <button class="filter-chip active" data-region="all">🇹🇼 全台 13 島</button>
+          <button class="filter-chip" data-region="north">⚓ 北北基 (基隆/情人湖/台北/土城)</button>
+          <button class="filter-chip" data-region="taoyuan">⭐ 桃園核心 (林口/部務室/桃園)</button>
+          <button class="filter-chip" data-region="central">🤝 台中 (大里仁愛)</button>
+          <button class="filter-chip" data-region="yunchia">🌾 雲嘉 (雲林/嘉義)</button>
+          <button class="filter-chip" data-region="south">☀️ 高雄 (高雄/大同/鳳山)</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 底部快速前往 13 島 Dock (對齊政策島 nav#dock.dock) -->
+    <nav class="dock" id="dock" aria-label="快速前往長庚中藥 13 島"></nav>
+  </main>
+
+  <!-- 彈窗 1：中醫藥劑部組織架構與業務分工總覽表 (完整呈現 PPTX 8 頁內容) -->
+  <div class="modal-backdrop" id="matrix-modal" hidden>
+    <div class="modal-box">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow">CGMH CHINESE MEDICINE PHARMACY DEPARTMENT</div>
+          <h2>長庚醫療財團法人 中醫藥劑部｜人員及業務介紹總覽表</h2>
+        </div>
+        <button id="matrix-close" aria-label="關閉視窗">✕</button>
+      </div>
+      <div class="modal-body" id="matrix-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- 彈窗 2：全體系互動隨堂測驗 -->
+  <div class="modal-backdrop" id="quiz-modal" hidden>
+    <div class="modal-box" style="width:min(680px, 94vw);">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow">INTERACTIVE ASSESSMENT</div>
+          <h2>🎯 長庚中藥群島｜部務室與各院區業務隨堂測驗</h2>
+        </div>
+        <button id="quiz-modal-close" aria-label="關閉測驗">✕</button>
+      </div>
+      <div class="modal-body" id="quiz-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- 載入資料庫與 3D 互動城市主程式 -->
+  <script src="./data.js"></script>
+  <script src="./main.js"></script>
+</body>
+</html>
