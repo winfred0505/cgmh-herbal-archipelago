@@ -267,7 +267,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
       landmark: "雨都海港中藥門診樓 ＆ 防潮恆溫飲片倉",
       summary: "位於台灣東北端基隆港畔，由藍煒皓主管帶領（兼轄情人湖院區），守護基隆與東北角民眾之中醫門診調劑、海港防潮藥庫管理與用藥安全。",
       glbModels: [
-        { file: "characters/Pharmacist.glb", label: "藍煒皓主管團隊藥師", role: "pharmacist", offset: [0.85, -0.55], scale: 0.52, clip: "Idle" },
+        { file: "characters/Pharmacist.glb", label: "藍煒皓", role: "pharmacist", isSupervisor: true, offset: [0.85, -0.55], scale: 0.52, clip: "Idle" },
         { file: "nature/TreeMed001.glb", label: "海港防風林", role: "prop", offset: [-1.1, -0.75], scale: 0.45 },
         { file: "animals/Eagle.glb", label: "基隆港黑鳶", role: "animal", offset: [1.1, 0.85], scale: 0.35 }
       ],
@@ -370,7 +370,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
       landmark: "情人湖畔療癒中藥館 ＆ 代客煎藥製劑坊",
       summary: "坐落於基隆情人湖山林綠意之間，與基隆院區同由藍煒皓主管統籌，結合腫瘤、慢病與高齡照護，提供溫馨細膩的中醫藥事與代客煎藥服務。",
       glbModels: [
-        { file: "characters/WardNurse.glb", label: "情人湖中藥衛教人員", role: "nurse", offset: [0.8, -0.4], scale: 0.5, clip: "Idle" },
+        { file: "characters/Paramedic.glb", label: "藍煒皓", role: "pharmacist", isSupervisor: true, offset: [0.8, -0.4], scale: 0.5, clip: "Idle" },
         { file: "nature/TreeHigh001.glb", label: "情人湖環湖松林", role: "prop", offset: [-1.05, -0.6], scale: 0.48 },
         { file: "animals/BlueSwan.glb", label: "情人湖水鳥", role: "animal", offset: [-0.85, 0.85], scale: 0.35 }
       ],
@@ -473,7 +473,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
       landmark: "台北都會中藥門診大樓 ＆ 自費養生精品中心",
       summary: "坐落於台北市松山區核心地段，由謝建欣主管領航，服務大台北高流量門診病患，結合高速條碼調劑、自費養生品項管理與臨床藥師進階培訓。",
       glbModels: [
-        { file: "characters/WhiteCoatDoctor.glb", label: "謝建欣主管團隊", role: "doctor", offset: [0.85, -0.45], scale: 0.52, clip: "Idle" },
+        { file: "characters/WhiteCoatDoctor.glb", label: "謝建欣", role: "doctor", isSupervisor: true, offset: [0.85, -0.45], scale: 0.52, clip: "Idle" },
         { file: "characters/GrandmaShopper.glb", label: "台北門診領藥市民", role: "citizen", offset: [-0.9, 0.75], scale: 0.48, clip: "Walk" },
         { file: "nature/TreeLow001.glb", label: "敦化林蔭行道樹", role: "prop", offset: [-1.05, -0.65], scale: 0.44 }
       ],
@@ -576,7 +576,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
       landmark: "土城智慧中藥大樓 ＆ 數位條碼藥櫃中心",
       summary: "位於新北市土城區（新北市立土城醫院），由劉賢德主管主持，打造現代化智慧中藥調劑流程、條碼藥櫃防錯與新北社區中西醫整合藥事服務。",
       glbModels: [
-        { file: "characters/Pharmacist.glb", label: "劉賢德主管團隊藥師", role: "pharmacist", offset: [0.82, -0.45], scale: 0.52, clip: "Idle" },
+        { file: "characters/ChiefSurgeon.glb", label: "劉賢德", role: "pharmacist", isSupervisor: true, offset: [0.82, -0.45], scale: 0.52, clip: "Idle" },
         { file: "nature/TreeLow002.glb", label: "土城桐花公園綠樹", role: "prop", offset: [-1.05, -0.55], scale: 0.45 },
         { file: "animals/Swallowtail.glb", label: "土城山林鳳蝶", role: "animal", offset: [-0.8, 0.85], scale: 0.3 }
       ],
@@ -679,7 +679,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
       landmark: "林口醫學中心中藥旗艦館 ＆ 臨床藥事教研圓頂",
       summary: "坐落於桃園市龜山區林口台地，由周佳玉主管統籌，為長庚體系旗艦醫學中心中藥重鎮，緊鄰桃園部務室，承擔急重症會診、新藥審核、科中品管與 P 認證臨床培訓。",
       glbModels: [
-        { file: "characters/WhiteCoatDoctor.glb", label: "周佳玉主管團隊", role: "doctor", offset: [0.85, -0.45], scale: 0.54, clip: "Idle" },
+        { file: "characters/OfficeLady.glb", label: "周佳玉", role: "doctor", isSupervisor: true, offset: [0.85, -0.45], scale: 0.54, clip: "Idle" },
         { file: "characters/WardPatient.glb", label: "林口門診候藥民眾", role: "citizen", offset: [-0.88, 0.78], scale: 0.48, clip: "Idle" },
         { file: "nature/TreeHigh002.glb", label: "林口台地樟樹", role: "prop", offset: [-1.1, -0.6], scale: 0.48 }
       ],
@@ -925,7 +925,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
       landmark: "桃園中藥科本部大樓 ＆ 體系總倉煎藥製劑中心",
       summary: "位於桃園市龜山區，由董維軒主管領軍，為「桃園中藥科」核心駐地，緊鄰桃園部務室與林口院區，結合大型中醫專科門診、體系總倉物流、中藥製劑與道地飲片鑑別。",
       glbModels: [
-        { file: "characters/Pharmacist.glb", label: "董維軒主管團隊藥師", role: "pharmacist", offset: [0.85, -0.45], scale: 0.52, clip: "Idle" },
+        { file: "characters/CompanyCeo.glb", label: "董維軒", role: "pharmacist", isSupervisor: true, offset: [0.85, -0.45], scale: 0.52, clip: "Idle" },
         { file: "animals/Doe.glb", label: "桃園本草園梅花鹿", role: "animal", offset: [1.05, 0.78], scale: 0.38 }
       ],
       outline: [
@@ -1027,7 +1027,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
       landmark: "大里仁愛合作聯盟中藥館 ＆ 體系醫令同步中心",
       summary: "位於台中市大里區（台中仁愛長庚合作聯盟醫院），由王仕雯主管主持，作為銜接北台灣桃園核心與南台灣雲嘉高之「中台灣樞紐島」，全面導入長庚中藥醫令範本、條碼與品管規範。",
       glbModels: [
-        { file: "characters/Pharmacist.glb", label: "王仕雯主管團隊藥師", role: "pharmacist", offset: [0.82, -0.45], scale: 0.52, clip: "Idle" },
+        { file: "characters/Receptionist.glb", label: "王仕雯", role: "pharmacist", isSupervisor: true, offset: [0.82, -0.45], scale: 0.52, clip: "Idle" },
         { file: "nature/TreeMed002.glb", label: "台中盆地綠蔭", role: "prop", offset: [-1.05, -0.6], scale: 0.46 },
         { file: "animals/Bee.glb", label: "大里蜂農採蜜蜂", role: "animal", offset: [-0.8, 0.85], scale: 0.28 }
       ],
@@ -1130,7 +1130,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
       landmark: "雲林沿海中藥照護堡 ＆ 偏鄉防風恆溫藥倉",
       summary: "位於雲林縣麥寮鄉沿海地區，由蔡盈億主管帶領，深耕農漁村高齡長者中醫藥照護，搭配防風防潮存量調撥與不良品即時檢驗通報，守護沿海偏鄉用藥不斷線。",
       glbModels: [
-        { file: "characters/Pharmacist.glb", label: "蔡盈億主管團隊藥師", role: "pharmacist", offset: [0.8, -0.45], scale: 0.52, clip: "Idle" },
+        { file: "characters/StoreManager.glb", label: "蔡盈億", role: "pharmacist", isSupervisor: true, offset: [0.8, -0.45], scale: 0.52, clip: "Idle" },
         { file: "characters/GrandmaShopper.glb", label: "雲林沿海領藥長輩", role: "citizen", offset: [-0.85, 0.78], scale: 0.48, clip: "Idle" },
         { file: "nature/Reed001.glb", label: "麥寮海岸蘆葦", role: "prop", offset: [-1.05, -0.6], scale: 0.5 }
       ],
@@ -1233,7 +1233,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
       landmark: "嘉義臨床中藥大樓 ＆ 嘉南本草藥園教研館",
       summary: "坐落於嘉義縣朴子市（鄰近高鐵嘉義站與故宮南院），由戴俊典主管統籌，為雲嘉南平原大型綜合教學醫院中藥重鎮，兼顧臨床會診、藥師進階培訓與雲嘉區域藥事支援。",
       glbModels: [
-        { file: "characters/WhiteCoatDoctor.glb", label: "戴俊典主管團隊", role: "doctor", offset: [0.84, -0.45], scale: 0.52, clip: "Idle" },
+        { file: "characters/SalesRep.glb", label: "戴俊典", role: "doctor", isSupervisor: true, offset: [0.84, -0.45], scale: 0.52, clip: "Idle" },
         { file: "nature/TreeHigh001.glb", label: "阿里山意象神木群", role: "prop", offset: [-1.05, -0.6], scale: 0.5 },
         { file: "animals/SunBear.glb", label: "台灣黑熊生態雕像", role: "animal", offset: [1.0, 0.8], scale: 0.36 }
       ],
@@ -1336,7 +1336,8 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
       landmark: "高雄醫學中心中藥總館 ＆ 澄清湖畔製劑品管中心",
       summary: "位於高雄市鳥松區澄清湖畔，為「高雄中藥科」核心醫學中心，由郭姮均、王麗綺兩位主管共同領航（統籌高雄、鳳山、大同三院區），肩負南台灣臨床中藥、製劑品管、新藥審核與教育訓練重任。",
       glbModels: [
-        { file: "characters/HospitalDirector.glb", label: "郭姮均・王麗綺主管團隊", role: "director", offset: [0.85, -0.45], scale: 0.54, clip: "Idle" },
+        { file: "characters/WardNurse.glb", label: "郭姮均", role: "director", isSupervisor: true, offset: [0.85, -0.45], scale: 0.54, clip: "Idle" },
+        { file: "characters/OfficeManager.glb", label: "王麗綺", role: "director", isSupervisor: true, offset: [0.55, -0.45], scale: 0.54, clip: "Idle" },
         { file: "characters/Pharmacist.glb", label: "高雄中藥科臨床藥師", role: "pharmacist", offset: [-0.88, 0.78], scale: 0.5, clip: "Idle" },
         { file: "animals/SacredIbis.glb", label: "澄清湖畔水鳥", role: "animal", offset: [1.05, 0.8], scale: 0.36 }
       ],
@@ -1443,7 +1444,8 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
       landmark: "大同都會高齡中藥館 ＆ 醫令條碼標準同步站",
       summary: "位於高雄市前金區市中心（高雄市立大同醫院），由郭姮均、王麗綺兩位主管共轄，立足南高雄都會核心，強化高齡友善中藥服務、醫令條碼同步與品質稽核。",
       glbModels: [
-        { file: "characters/Pharmacist.glb", label: "大同院區中藥師", role: "pharmacist", offset: [0.82, -0.45], scale: 0.52, clip: "Idle" },
+        { file: "characters/WardNurse.glb", label: "郭姮均", role: "director", isSupervisor: true, offset: [0.82, -0.45], scale: 0.52, clip: "Idle" },
+        { file: "characters/OfficeManager.glb", label: "王麗綺", role: "director", isSupervisor: true, offset: [0.52, -0.45], scale: 0.52, clip: "Idle" },
         { file: "characters/GrandmaShopper.glb", label: "前金區高齡就醫市民", role: "citizen", offset: [-0.85, 0.76], scale: 0.48, clip: "Idle" },
         { file: "nature/Bush001.glb", label: "中央公園綠意植栽", role: "prop", offset: [-1.05, -0.55], scale: 0.45 }
       ],
@@ -1546,7 +1548,8 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
       landmark: "鳳山社區中藥門診中心 ＆ 高雄三院聯合儲運站",
       summary: "位於高雄市鳳山區（高雄市鳳山醫院），為長庚中藥群島最南端之陽光門戶島嶼，由郭姮均、王麗綺兩位主管共同督導，深耕大鳳山高密度社區門診調劑、快速條碼領藥與南區三院聯合藥品調撥。",
       glbModels: [
-        { file: "characters/WardNurse.glb", label: "鳳山中藥門診衛教師", role: "nurse", offset: [0.82, -0.45], scale: 0.52, clip: "Idle" },
+        { file: "characters/WardNurse.glb", label: "郭姮均", role: "director", isSupervisor: true, offset: [0.82, -0.45], scale: 0.52, clip: "Idle" },
+        { file: "characters/OfficeManager.glb", label: "王麗綺", role: "director", isSupervisor: true, offset: [0.52, -0.45], scale: 0.52, clip: "Idle" },
         { file: "characters/StockClerk.glb", label: "南區聯合儲運藥庫人員", role: "warehouse", offset: [-0.85, 0.76], scale: 0.48, clip: "Idle" },
         { file: "nature/TreeMed001.glb", label: "鳳山熱帶暖陽綠樹", role: "prop", offset: [-1.05, -0.58], scale: 0.46 }
       ],

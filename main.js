@@ -1312,9 +1312,10 @@
       const rnd = mulberry32(islSeed);
 
       // (A) 島嶼專屬 GLB 模型 (人物、動物、代表樹木 — 真實比例)
-      // 非部務室的院區島上，只有主管這角色有名稱，並站在島上主館的前方
-      let supervisorPlaced = false;
+      // 非部務室的院區島上，只有主管這角色有名稱，並站在島上主館的前方；其餘人物／動物／植物不可點擊
       const mainBldg = (isl.buildings && isl.buildings[0]) || { lx: 0, lz: 0, size: 0.85 };
+      const supSpecs = (isl.glbModels || []).filter((m) => m.isSupervisor);
+      let supIdx = 0;
 
       (isl.glbModels || []).forEach((spec, mIdx) => {
         const isAnimal = spec.file.startsWith("animals/");
@@ -1325,62 +1326,62 @@
         const isFly = isEagle || isInsect;
         const animKind = isNature ? "plant" : isAnimal ? (isFly ? "animal_fly" : "animal_ground") : "char";
 
-        const isNonHqSupervisor = isChar && isl.id !== "headquarters" && !supervisorPlaced;
-        const isSecondaryNonHqChar = isChar && isl.id !== "headquarters" && supervisorPlaced;
-        if (isNonHqSupervisor) supervisorPlaced = true;
+        const isNonHqSupervisor = isChar && isl.id !== "headquarters" && !!spec.isSupervisor;
+        const isNamedChar = isChar && (isl.id === "headquarters" || isNonHqSupervisor);
+        const isSecondaryNonHqChar = isChar && isl.id !== "headquarters" && !isNonHqSupervisor;
 
         const targetH = getRealisticModelHeight(spec.file, spec.scale || 0.26);
-        // 黑鳶飛翔於高空 (TOP + 0.65)，鳳蝶與野蜂翩翩飛舞於花叢／藥圃高度 (TOP + 0.22)
         const baseY = isEagle ? TOP + 0.65 : isInsect ? TOP + 0.22 : TOP + 0.04;
 
-        // 若為各院區主管，站立於島上主館前方 (+Z 入口處)
-        const pos = isNonHqSupervisor
-          ? new THREE.Vector3(
-              c.x + mainBldg.lx,
-              TOP + 0.04,
-              c.z + mainBldg.lz + (mainBldg.size || 0.85) * 0.46 + 0.22
-            )
-          : new THREE.Vector3(
-              c.x + (spec.offset ? spec.offset[0] : 0.8),
-              baseY,
-              c.z + (spec.offset ? spec.offset[1] : 0.6)
-            );
+        // 若為各院區主管，站立於島上主館前方 (+Z 入口處)；雙主管並排站立
+        let pos;
+        if (isNonHqSupervisor) {
+          const totalSup = Math.max(1, supSpecs.length);
+          const dxSup = totalSup > 1 ? (supIdx - (totalSup - 1) / 2) * 0.34 : 0;
+          supIdx++;
+          pos = new THREE.Vector3(
+            c.x + mainBldg.lx + dxSup,
+            TOP + 0.04,
+            c.z + mainBldg.lz + (mainBldg.size || 0.85) * 0.46 + 0.22
+          );
+        } else {
+          pos = new THREE.Vector3(
+            c.x + (spec.offset ? spec.offset[0] : 0.8),
+            baseY,
+            c.z + (spec.offset ? spec.offset[1] : 0.6)
+          );
+        }
         const rotY = isNonHqSupervisor
           ? 0 // 面向前方廣場與來訪者
           : Math.atan2(cityCenter.x - pos.x, cityCenter.z - pos.z) + (mIdx - 1) * 0.35;
 
         const targetGroup = isNature ? plantsGroup : isAnimal ? animalsGroup : peopleGroup;
-        const displayLabel = isNonHqSupervisor
-          ? isl.supervisor
-          : isSecondaryNonHqChar
-          ? ""
-          : isChar
-          ? formatPersonNameOnly(spec.label)
-          : spec.label;
-        const uData = displayLabel
+        const displayLabel = isNamedChar ? formatPersonNameOnly(spec.label) : "";
+        // 除了有名稱的角色可以點擊，其他不能點擊
+        const uData = isNamedChar
           ? { pickType: "glb", label: displayLabel, island: isl }
           : null;
 
         if (isAnimal) {
-          spawnRealisticAnimalWithFlock(spec.file, targetGroup, pos, rotY, animKind, uData);
+          spawnRealisticAnimalWithFlock(spec.file, targetGroup, pos, rotY, animKind, null);
         } else {
           spawnGlb(spec.file, targetGroup, pos, targetH, rotY, animKind, uData);
         }
 
         // 註冊 3D 人物／動物／植物浮動名牌錨點 (非部務室僅主管有名稱)
-        if (!isSecondaryNonHqChar && displayLabel) {
+        if (!isSecondaryNonHqChar && (isNamedChar || !isChar)) {
           ecoLabelTargets.push({
             islandId: isl.id,
-            label: displayLabel,
+            label: isNamedChar ? displayLabel : spec.label,
             kind: isNature ? "plant" : isAnimal ? "animal" : "char",
             icon: isNature ? "🌿" : isAnimal ? "🐾" : "🧑‍⚕️",
-            isPrimary: isNonHqSupervisor || mIdx === 0 || isAnimal,
+            isPrimary: isNamedChar || isAnimal,
             worldPos: pos.clone().add(new THREE.Vector3(0, targetH + 0.10, 0))
           });
         }
       });
 
-      // (B) 每座島額外配置 2 棵 GLB 樹木與 2 叢 GLB 灌木／草本植物 -> plantsGroup
+      // (B) 每座島額外配置 2 棵 GLB 樹木與 2 叢 GLB 灌木／草本植物 -> plantsGroup (不可點擊)
       for (let t = 0; t < 2; t++) {
         const cornerIdx = (idx + t * 3 + 1) % 6;
         const [tx, tz] = hexVertex(c.x, c.z, R * 0.76, cornerIdx);
@@ -1393,7 +1394,7 @@
             getRealisticModelHeight(treeFile, 0.85),
             idx * 0.9 + t,
             "plant",
-            { pickType: "glb", label: `${isl.shortName}・本草林木`, island: isl }
+            null
           );
         }
 
@@ -1406,11 +1407,11 @@
           getRealisticModelHeight(plantFile, 0.24),
           idx * 1.3 + t,
           "plant",
-          { pickType: "glb", label: `${isl.shortName}・藥用草本植栽`, island: isl }
+          null
         );
       }
 
-      // (C) 若該島原本無 GLB 動物，補上專屬台灣動物使其每島皆有真實比例動物生態 -> animalsGroup
+      // (C) 若該島原本無 GLB 動物，補上專屬台灣動物使其每島皆有真實比例動物生態 -> animalsGroup (不可點擊)
       const hasAnimalAlready = (isl.glbModels || []).some((m) => m.file.startsWith("animals/"));
       const extraAnimal = EXTRA_ANIMALS[idx % EXTRA_ANIMALS.length];
       if (!hasAnimalAlready) {
@@ -1425,7 +1426,7 @@
           animalPos,
           idx * 0.8,
           extraAnimal.kind,
-          { pickType: "glb", label: `${isl.shortName}・${extraAnimal.label}`, island: isl }
+          null
         );
         ecoLabelTargets.push({
           islandId: isl.id,
@@ -1455,12 +1456,6 @@
         const tStyle = treeStyles[plantedTrees % treeStyles.length];
         const tMesh = createMiniatureTree(tStyle, 0.42 + rnd() * 0.14, islSeed + attempt);
         tMesh.position.set(c.x + lx, TOP + 0.04, c.z + lz);
-        tMesh.traverse((ch) => {
-          if (ch.isMesh) {
-            ch.userData = { pickType: "glb", label: `${isl.shortName}・療癒綠蔭庭園`, island: isl };
-            pickables.push(ch);
-          }
-        });
         plantsGroup.add(tMesh);
         animatedEntities.push({
           holder: tMesh,
@@ -1483,35 +1478,17 @@
           const bed = createHerbGardenBed(islSeed + hb);
           bed.position.set(c.x + hlx, TOP + 0.04, c.z + hlz);
           bed.rotation.y = hAng;
-          bed.traverse((ch) => {
-            if (ch.isMesh) {
-              ch.userData = { pickType: "glb", label: `${isl.shortName}・道地本草藥圃`, island: isl };
-              pickables.push(ch);
-            }
-          });
           plantsGroup.add(bed);
         }
       }
 
-      // (E) 每座島配置 3 位沿環島步道行走之真實比例藥師／主管／領藥民眾 -> peopleGroup (名稱僅顯示名字)
+      // (E) 每座島配置 3 位沿環島步道行走之真實比例藥師／主管／領藥民眾 -> peopleGroup (無名稱角色不可點擊)
       const islandRoles = ["pharmacist", "doctor", "citizen"];
-      const supFirstName = isl.supervisor.split("、")[0];
       for (let pIdx = 0; pIdx < 3; pIdx++) {
         const role = islandRoles[pIdx % islandRoles.length];
-        const roleTitle = role === "pharmacist"
-          ? "中藥師"
-          : role === "doctor"
-          ? supFirstName
-          : "民眾";
         const accent = [0xdb6a41, 0x3e7c8c, 0x5e9a6f][(idx + pIdx) % 3];
         const person = createChibiPerson(role, accent, islSeed + pIdx * 19);
         person.scale.setScalar(1.0);
-        person.traverse((ch) => {
-          if (ch.isMesh) {
-            ch.userData = { pickType: "glb", label: roleTitle, island: isl };
-            pickables.push(ch);
-          }
-        });
         peopleGroup.add(person);
 
         // 環繞該島六角外環步道行走
@@ -1554,18 +1531,6 @@
       const colHex = parseInt(f.color.replace("#", "0x"), 16) || 0xdb6a41;
       const walker = createChibiPerson("pharmacist", colHex, 700 + fIdx * 13);
       walker.scale.setScalar(1.0);
-      const hqIsl = DATA.islands.find((i) => i.id === "headquarters");
-      const ownerName = formatPersonNameOnly(f.owner);
-      walker.traverse((ch) => {
-        if (ch.isMesh) {
-          ch.userData = {
-            pickType: "glb",
-            label: ownerName,
-            island: hqIsl
-          };
-          pickables.push(ch);
-        }
-      });
       peopleGroup.add(walker);
       walkingPeople.push({
         group: walker,
@@ -1717,7 +1682,7 @@
         pos,
         sIdx * 1.4,
         "animal_ground",
-        { pickType: "glb", label: spot.label, island: isl }
+        null
       );
     });
   }
@@ -1947,14 +1912,8 @@
   }
 
   function buildMarineLife() {
-    const registerPickable = (root, label, islId) => {
-      const isl = DATA.islands.find((i) => i.id === islId) || DATA.islands[0];
-      root.traverse((ch) => {
-        if (ch.isMesh) {
-          ch.userData = { pickType: "glb", label, island: isl };
-          pickables.push(ch);
-        }
-      });
+    const registerPickable = () => {
+      // 僅有名稱的角色可點擊，海域生物純視覺呈現不可點擊
     };
 
     // (1) 🐋 外海巡游大翅鯨／抹香鯨 (3 頭，配合加寬間距配置於外圍深海航道)
@@ -2234,22 +2193,26 @@
       });
     });
 
-    // 建立每座島嶼之 3D 人物、動物、植物與海域水中生物浮動小名牌
+    // 建立每座島嶼之 3D 人物、動物、植物與海域水中生物浮動小名牌 (僅有名稱的角色可點擊)
     ecoLabelTargets.forEach((target) => {
       const ecoBtn = document.createElement("button");
       ecoBtn.className = `eco-pin-label is-${target.kind}`;
       const cleanLabel = String(target.label || "").replace(/^(🐋|🐬|🐢|🌊|🐟|🐾|🌿|🧑‍⚕️)\s*/u, "");
       ecoBtn.innerHTML = `<span>${target.icon}</span><span>${cleanLabel}</span>`;
-      ecoBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        AudioFX.click(860);
-        selectIsland(target.islandId, false);
-        flyTo(
-          target.worldPos.clone(),
-          target.worldPos.clone().add(new THREE.Vector3(1.8, 2.1, 2.7)),
-          700
-        );
-      });
+      if (target.kind === "char") {
+        ecoBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          AudioFX.click(860);
+          selectIsland(target.islandId, false);
+          flyTo(
+            target.worldPos.clone(),
+            target.worldPos.clone().add(new THREE.Vector3(1.8, 2.1, 2.7)),
+            700
+          );
+        });
+      } else {
+        ecoBtn.style.pointerEvents = "none";
+      }
       labelsContainer.appendChild(ecoBtn);
       ecoLabelEls.push({ el: ecoBtn, target });
     });
