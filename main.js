@@ -557,19 +557,59 @@
     });
   });
 
-  // 7) 自動偵測相鄰六角島並建造跨海微縮拱橋 (Bridges)
+  // 7) 自動偵測相鄰六角島並建造跨海微縮拱橋 (Bridges) 與紀錄橋樑連通圖
   const builtBridgePairs = new Set();
+  const bridgeAdj = new Map();
+  DATA.islands.forEach((isl) => bridgeAdj.set(isl.id, []));
+
   DATA.islands.forEach((islA) => {
     NEIGHBORS.forEach(([dq, dr]) => {
       const keyB = `${islA.q + dq},${islA.r + dr}`;
       const islB = islandCoordMap.get(keyB);
       if (!islB) return;
+      bridgeAdj.get(islA.id).push(islB.id);
       const pairKey = [islA.id, islB.id].sort().join("--");
       if (builtBridgePairs.has(pairKey)) return;
       builtBridgePairs.add(pairKey);
       buildArchBridge(islandCenters.get(islA.id), islandCenters.get(islB.id), islA.id === "headquarters" || islB.id === "headquarters");
     });
   });
+
+  function getBridgeArcPoints(posA, posB) {
+    const mid = posA.clone().add(posB).multiplyScalar(0.5);
+    const dir = posB.clone().sub(posA);
+    const dist = dir.length();
+    const dirN = dir.clone().normalize();
+    const bridgeLen = Math.max(0.65, dist - R * 1.66);
+    const pts = [];
+    const steps = 8;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps - 0.5; // -0.5 -> +0.5
+      const archY = Math.cos(t * Math.PI) * 0.14;
+      const p = mid.clone().addScaledVector(dirN, t * bridgeLen);
+      p.y = TOP + 0.065 + archY;
+      pts.push(p);
+    }
+    return pts;
+  }
+
+  function findBridgePath(startId, endId) {
+    if (startId === endId) return [startId];
+    const queue = [[startId]];
+    const visited = new Set([startId]);
+    while (queue.length) {
+      const path = queue.shift();
+      const cur = path[path.length - 1];
+      for (const nxt of bridgeAdj.get(cur) || []) {
+        if (visited.has(nxt)) continue;
+        const nextPath = [...path, nxt];
+        if (nxt === endId) return nextPath;
+        visited.add(nxt);
+        queue.push(nextPath);
+      }
+    }
+    return [startId];
+  }
 
   function buildArchBridge(posA, posB, isHqBridge) {
     const mid = posA.clone().add(posB).multiplyScalar(0.5);
@@ -1272,31 +1312,54 @@
       const rnd = mulberry32(islSeed);
 
       // (A) 島嶼專屬 GLB 模型 (人物、動物、代表樹木 — 真實比例)
+      // 非部務室的院區島上，只有主管這角色有名稱，並站在島上主館的前方
+      let supervisorPlaced = false;
+      const mainBldg = (isl.buildings && isl.buildings[0]) || { lx: 0, lz: 0, size: 0.85 };
+
       (isl.glbModels || []).forEach((spec, mIdx) => {
         const isAnimal = spec.file.startsWith("animals/");
         const isNature = spec.file.startsWith("nature/");
+        const isChar = !isAnimal && !isNature;
         const isEagle = spec.file.includes("Eagle");
         const isInsect = spec.file.includes("Swallowtail") || spec.file.includes("Bee");
         const isFly = isEagle || isInsect;
         const animKind = isNature ? "plant" : isAnimal ? (isFly ? "animal_fly" : "animal_ground") : "char";
 
+        const isNonHqSupervisor = isChar && isl.id !== "headquarters" && !supervisorPlaced;
+        const isSecondaryNonHqChar = isChar && isl.id !== "headquarters" && supervisorPlaced;
+        if (isNonHqSupervisor) supervisorPlaced = true;
+
         const targetH = getRealisticModelHeight(spec.file, spec.scale || 0.26);
         // 黑鳶飛翔於高空 (TOP + 0.65)，鳳蝶與野蜂翩翩飛舞於花叢／藥圃高度 (TOP + 0.22)
         const baseY = isEagle ? TOP + 0.65 : isInsect ? TOP + 0.22 : TOP + 0.04;
-        const pos = new THREE.Vector3(
-          c.x + (spec.offset ? spec.offset[0] : 0.8),
-          baseY,
-          c.z + (spec.offset ? spec.offset[1] : 0.6)
-        );
-        const rotY = Math.atan2(cityCenter.x - pos.x, cityCenter.z - pos.z) + (mIdx - 1) * 0.35;
+
+        // 若為各院區主管，站立於島上主館前方 (+Z 入口處)
+        const pos = isNonHqSupervisor
+          ? new THREE.Vector3(
+              c.x + mainBldg.lx,
+              TOP + 0.04,
+              c.z + mainBldg.lz + (mainBldg.size || 0.85) * 0.46 + 0.22
+            )
+          : new THREE.Vector3(
+              c.x + (spec.offset ? spec.offset[0] : 0.8),
+              baseY,
+              c.z + (spec.offset ? spec.offset[1] : 0.6)
+            );
+        const rotY = isNonHqSupervisor
+          ? 0 // 面向前方廣場與來訪者
+          : Math.atan2(cityCenter.x - pos.x, cityCenter.z - pos.z) + (mIdx - 1) * 0.35;
 
         const targetGroup = isNature ? plantsGroup : isAnimal ? animalsGroup : peopleGroup;
-        const displayLabel = (!isNature && !isAnimal) ? formatPersonNameOnly(spec.label) : spec.label;
-        const uData = {
-          pickType: "glb",
-          label: displayLabel,
-          island: isl
-        };
+        const displayLabel = isNonHqSupervisor
+          ? isl.supervisor
+          : isSecondaryNonHqChar
+          ? ""
+          : isChar
+          ? formatPersonNameOnly(spec.label)
+          : spec.label;
+        const uData = displayLabel
+          ? { pickType: "glb", label: displayLabel, island: isl }
+          : null;
 
         if (isAnimal) {
           spawnRealisticAnimalWithFlock(spec.file, targetGroup, pos, rotY, animKind, uData);
@@ -1304,15 +1367,17 @@
           spawnGlb(spec.file, targetGroup, pos, targetH, rotY, animKind, uData);
         }
 
-        // 註冊 3D 人物／動物／植物浮動名牌錨點 (人物僅顯示名字)
-        ecoLabelTargets.push({
-          islandId: isl.id,
-          label: displayLabel,
-          kind: isNature ? "plant" : isAnimal ? "animal" : "char",
-          icon: isNature ? "🌿" : isAnimal ? "🐾" : "🧑‍⚕️",
-          isPrimary: mIdx === 0 || isAnimal,
-          worldPos: pos.clone().add(new THREE.Vector3(0, targetH + 0.10, 0))
-        });
+        // 註冊 3D 人物／動物／植物浮動名牌錨點 (非部務室僅主管有名稱)
+        if (!isSecondaryNonHqChar && displayLabel) {
+          ecoLabelTargets.push({
+            islandId: isl.id,
+            label: displayLabel,
+            kind: isNature ? "plant" : isAnimal ? "animal" : "char",
+            icon: isNature ? "🌿" : isAnimal ? "🐾" : "🧑‍⚕️",
+            isPrimary: isNonHqSupervisor || mIdx === 0 || isAnimal,
+            worldPos: pos.clone().add(new THREE.Vector3(0, targetH + 0.10, 0))
+          });
+        }
       });
 
       // (B) 每座島額外配置 2 棵 GLB 樹木與 2 叢 GLB 灌木／草本植物 -> plantsGroup
@@ -1466,11 +1531,26 @@
       }
     });
 
-    // 2) 在跨海拱橋上配置跨院協作行人 -> peopleGroup (名稱僅顯示名字)
+    // 2) 在跨海拱橋上配置跨院協作行人 -> 嚴格沿實際跨海拱橋與島面路徑行走，不走入海裡
     DATA.flows.forEach((f, fIdx) => {
-      const hqCenter = islandCenters.get("headquarters");
-      const firstTarget = islandCenters.get(f.targets[0]);
-      if (!hqCenter || !firstTarget) return;
+      const targetId = f.targets[0];
+      const islandHopIds = findBridgePath("headquarters", targetId);
+      if (islandHopIds.length < 2) return;
+
+      const bridgeWaypoints = [];
+      for (let h = 0; h < islandHopIds.length - 1; h++) {
+        const posA = islandCenters.get(islandHopIds[h]);
+        const posB = islandCenters.get(islandHopIds[h + 1]);
+        if (!posA || !posB) continue;
+        if (h === 0) {
+          bridgeWaypoints.push(posA.clone().setY(TOP + 0.045));
+        }
+        const arcPts = getBridgeArcPoints(posA, posB);
+        arcPts.forEach((p) => bridgeWaypoints.push(p));
+        bridgeWaypoints.push(posB.clone().setY(TOP + 0.045));
+      }
+      if (bridgeWaypoints.length < 2) return;
+
       const colHex = parseInt(f.color.replace("#", "0x"), 16) || 0xdb6a41;
       const walker = createChibiPerson("pharmacist", colHex, 700 + fIdx * 13);
       walker.scale.setScalar(1.0);
@@ -1489,13 +1569,10 @@
       peopleGroup.add(walker);
       walkingPeople.push({
         group: walker,
-        waypoints: [
-          hqCenter.clone().setY(TOP + 0.05),
-          firstTarget.clone().setY(TOP + 0.05)
-        ],
+        waypoints: bridgeWaypoints,
         loop: false,
         progress: (fIdx * 0.19) % 1,
-        speed: 0.11,
+        speed: 0.045 / Math.max(1, islandHopIds.length - 1),
         phase: fIdx * 1.1
       });
     });
@@ -3383,11 +3460,14 @@
           p0 = pts[idx0];
           p1 = pts[idx1];
         } else {
-          // 拱橋折返行走
+          // 沿多段拱橋折線折返行走，確保全程走在島面與拱橋橋面上
           const pingPong = wp.progress < 0.5 ? wp.progress * 2 : (1 - wp.progress) * 2;
-          segU = pingPong;
-          p0 = pts[0];
-          p1 = pts[1];
+          const exact = pingPong * (pts.length - 1);
+          const idx0 = Math.min(pts.length - 2, Math.floor(exact));
+          const idx1 = idx0 + 1;
+          segU = exact - idx0;
+          p0 = pts[idx0];
+          p1 = pts[idx1];
         }
         wp.group.position.lerpVectors(p0, p1, segU);
         const stepPhase = elapsed * 9.0 + wp.phase;
