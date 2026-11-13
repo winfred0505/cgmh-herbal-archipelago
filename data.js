@@ -824,7 +824,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
         {
           id: "hq-chen-li-wei",
           pin: "①",
-          name: "北院區業務綜理指揮塔（陳立偉）",
+          name: "北院區業務綜理指揮塔",
           kind: "clocktower",
           owner: "陳立偉（整體綜理）",
           lx: 0.0,
@@ -836,7 +836,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
         {
           id: "hq-chen-gui-fu",
           pin: "②",
-          name: "請購製劑與行政資訊館（陳貴福）",
+          name: "請購製劑與行政資訊館",
           kind: "cityhall",
           owner: "陳貴福（採購・製劑・飲片資料・績效・行政）",
           lx: -0.82,
@@ -848,7 +848,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
         {
           id: "hq-huang-xin-yu",
           pin: "③",
-          name: "新藥稽核與藥師進階中心（黃馨瑀）",
+          name: "新藥稽核與藥師進階中心",
           kind: "childcenter",
           owner: "黃馨瑀（新藥資料・績效報告・內稽・會議・進階）",
           lx: 0.82,
@@ -860,7 +860,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
         {
           id: "hq-qiu-xiu-li",
           pin: "④",
-          name: "品管抽驗與馬兜鈴酸檢驗所（邱秀麗）",
+          name: "品管抽驗與馬兜鈴酸檢驗所",
           kind: "qc_station",
           owner: "邱秀麗（品管抽驗・馬兜鈴酸・科中採購）",
           lx: -0.68,
@@ -872,7 +872,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
         {
           id: "hq-lin-yun-shan",
           pin: "⑤",
-          name: "總倉存量與教育訓練中心（林昀珊）",
+          name: "總倉存量與教育訓練中心",
           kind: "warehouse",
           owner: "林昀珊（總倉・存量管制・請購・收費・教訓）",
           lx: 0.68,
@@ -884,7 +884,7 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
         {
           id: "hq-matrix-hub",
           pin: "⑥",
-          name: "八大業務分工協作星環（全體部務室）",
+          name: "八大業務分工協作星環",
           kind: "infinityforum",
           owner: "陳立偉・陳貴福・黃馨瑀・邱秀麗・林昀珊",
           lx: 0.0,
@@ -926,7 +926,6 @@ window.CGMH_TCM_ARCHIPELAGO_DATA = {
       summary: "位於桃園市龜山區，由董維軒主管領軍，為「桃園中藥科」核心駐地，緊鄰桃園部務室與林口院區，結合大型中醫專科門診、體系總倉物流、中藥製劑與道地飲片鑑別。",
       glbModels: [
         { file: "characters/Pharmacist.glb", label: "董維軒主管團隊藥師", role: "pharmacist", offset: [0.85, -0.45], scale: 0.52, clip: "Idle" },
-        { file: "characters/FarmOwner.glb", label: "道地飲片炮製技師", role: "farmer", offset: [-0.88, 0.78], scale: 0.5, clip: "Idle" },
         { file: "animals/Doe.glb", label: "桃園本草園梅花鹿", role: "animal", offset: [1.05, 0.78], scale: 0.38 }
       ],
       outline: [

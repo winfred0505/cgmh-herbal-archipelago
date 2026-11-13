@@ -761,7 +761,6 @@
     "情人湖中藥衛教人員": "陳藥師",
     "台北門診領藥市民": "王阿姨",
     "林口門診候藥民眾": "林先生",
-    "道地飲片炮製技師": "李技師",
     "雲林沿海領藥長輩": "張奶奶",
     "高雄中藥科臨床藥師": "蔡藥師",
     "大同院區中藥師": "吳藥師",
@@ -1549,11 +1548,9 @@
       baseMesh.position.y = 0.11;
       baseMesh.receiveShadow = true;
       baseMesh.castShadow = true;
-      baseMesh.userData = { pickType: "glb", label: si.label, island: DATA.islands[0] };
-      pickables.push(baseMesh);
       isletHolder.add(baseMesh);
 
-      // 放置 Nature Kit 山丘／沙丘／懸崖／礁岩 GLB
+      // 放置 Nature Kit 山丘／沙丘／懸崖／礁岩 GLB (純視覺點綴，不可點擊)
       if (si.terrain) {
         spawnGlb(
           si.terrain,
@@ -1562,7 +1559,7 @@
           si.tH,
           sIdx * 0.9,
           "prop",
-          { pickType: "glb", label: si.label, island: DATA.islands[0] }
+          null
         );
       }
 
@@ -1578,7 +1575,7 @@
         null
       );
 
-      // 點綴離島樹木／蘆葦 -> plantsGroup
+      // 點綴離島樹木／蘆葦 -> plantsGroup (純視覺點綴，不可點擊)
       if (si.tree) {
         spawnGlb(
           si.tree,
@@ -1587,11 +1584,11 @@
           si.tree.includes("Reed") ? 0.28 : 0.68,
           sIdx * 0.7,
           "plant",
-          { pickType: "glb", label: `${si.label}・海岸植栽`, island: DATA.islands[0] }
+          null
         );
       }
 
-      // 離島海岸水鳥 (鵜鶘／藍天鵝／水鴨) -> animalsGroup
+      // 離島海岸水鳥 (鵜鶘／藍天鵝／水鴨) -> animalsGroup (純視覺點綴，不可點擊)
       if (si.bird) {
         spawnGlb(
           si.bird,
@@ -1600,7 +1597,7 @@
           getRealisticModelHeight(si.bird, 0.14),
           sIdx * 1.1,
           "animal_ground",
-          { pickType: "glb", label: `${si.label}・海岸水鳥`, island: DATA.islands[0] }
+          null
         );
       }
 
