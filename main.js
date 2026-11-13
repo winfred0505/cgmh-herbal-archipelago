@@ -79,7 +79,7 @@
   // 2. 政策島 (HEART Island) 核心六角幾何與程序化材質系統
   // =========================================================================
   const R = 2.25;          // 六角島外接圓半徑 (Pointy-top hexagon)
-  const SPACING = 2.52;    // 六角軸向間距
+  const SPACING = 3.15;    // 六角軸向間距 (拉大島嶼間距，讓海域與跨海拱橋視野更寬闊不擁擠)
   const TOP = 0.68;        // 島嶼頂面高度
   const WATER_Y = -0.18;   // 海平面高度
   const RING_R = 1.98;     // 環島步道半徑
@@ -308,7 +308,7 @@
   controls.maxPolarAngle = THREE.MathUtils.degToRad(72);
   controls.minPolarAngle = THREE.MathUtils.degToRad(14);
   controls.minDistance = 4.5;
-  controls.maxDistance = 68;
+  controls.maxDistance = 82;
 
   // 計算 13 島幾何中心
   const islandCenters = new Map();
@@ -320,9 +320,9 @@
   });
   cityCenter.divideScalar(DATA.islands.length);
 
-  // 預設全景鏡頭位置
+  // 預設全景鏡頭位置 (配合加寬的群島間距微調遠近)
   const OVERVIEW_TARGET = cityCenter.clone().add(new THREE.Vector3(0, 0.2, 0.5));
-  const OVERVIEW_POS = cityCenter.clone().add(new THREE.Vector3(16.5, 22.5, 25.5));
+  const OVERVIEW_POS = cityCenter.clone().add(new THREE.Vector3(19.5, 26.5, 30.5));
   camera.position.copy(OVERVIEW_POS);
   controls.target.copy(OVERVIEW_TARGET);
   controls.update();
@@ -369,7 +369,7 @@
   const sunLight = new THREE.DirectionalLight(0xfff1de, 1.35);
   sunLight.castShadow = true;
   sunLight.shadow.mapSize.set(2048, 2048);
-  Object.assign(sunLight.shadow.camera, { left: -24, right: 24, top: 26, bottom: -26, near: 1, far: 95 });
+  Object.assign(sunLight.shadow.camera, { left: -32, right: 32, top: 34, bottom: -34, near: 1, far: 105 });
   sunLight.shadow.bias = -0.0005;
   sunLight.target.position.copy(cityCenter);
   scene.add(sunLight, sunLight.target);
@@ -741,14 +741,45 @@
   }
 
   // =========================================================================
-  // 6. 載入 D:\Users\User\Desktop\3D素材 之 3D GLB 模型 + 政策島風格人物／動物／本草植物群
+  // 6. 載入 D:\Users\User\Desktop\3D素材 之 3D GLB 模型 + 人物／動物／植物分層群組
   // =========================================================================
-  const charactersGroup = new THREE.Group();
-  worldGroup.add(charactersGroup);
+  const peopleGroup = new THREE.Group();
+  peopleGroup.name = "peopleGroup";
+  const animalsGroup = new THREE.Group();
+  animalsGroup.name = "animalsGroup";
+  const plantsGroup = new THREE.Group();
+  plantsGroup.name = "plantsGroup";
+  worldGroup.add(peopleGroup, animalsGroup, plantsGroup);
+
   const mixers = [];
   const animatedEntities = [];
   const walkingPeople = [];
   const ecoLabelTargets = [];
+
+  // 人物名稱僅顯示名字（去除職稱、院區與括號附註）
+  const GENERIC_PERSON_NAMES = {
+    "情人湖中藥衛教人員": "陳藥師",
+    "台北門診領藥市民": "王阿姨",
+    "林口門診候藥民眾": "林先生",
+    "道地飲片炮製技師": "李技師",
+    "雲林沿海領藥長輩": "張奶奶",
+    "高雄中藥科臨床藥師": "蔡藥師",
+    "大同院區中藥師": "吳藥師",
+    "前金區高齡就醫市民": "陳阿嬤",
+    "鳳山中藥門診衛教師": "黃衛教師",
+    "南區聯合儲運藥庫人員": "林專員"
+  };
+
+  function formatPersonNameOnly(rawLabel) {
+    if (!rawLabel) return "";
+    if (GENERIC_PERSON_NAMES[rawLabel]) return GENERIC_PERSON_NAMES[rawLabel];
+    let name = String(rawLabel)
+      .replace(/（[^）]*）/g, "")
+      .replace(/\([^)]*\)/g, "")
+      .replace(/主管團隊藥師|主管團隊|團隊藥師|巡迴中藥師/g, "")
+      .trim();
+    return name || rawLabel;
+  }
 
   function base64ToArrayBuffer(b64) {
     const bin = atob(b64);
@@ -1019,6 +1050,7 @@
     if (relPath.includes("SunBear")) return 0.20;      // 台灣黑熊 (~130cm)
     if (relPath.includes("Doe")) return 0.19;          // 台灣梅花鹿 (~120cm)
     if (relPath.includes("BlueSwan")) return 0.135;    // 藍天鵝 (~88cm)
+    if (relPath.includes("Pelican")) return 0.145;     // 海岸鵜鶘 (~95cm)
     if (relPath.includes("SacredIbis")) return 0.125;  // 埃及聖䴉／水鳥 (~80cm)
     if (relPath.includes("Eagle")) return 0.135;       // 盤旋黑鳶 (~85cm 展翼視覺尺度)
     if (relPath.includes("Duck")) return 0.082;        // 綠頭水鴨 (~50cm)
@@ -1043,6 +1075,7 @@
       "animals/Doe.glb",
       "animals/Duck.glb",
       "animals/Eagle.glb",
+      "animals/Pelican.glb",
       "animals/SacredIbis.glb",
       "animals/SunBear.glb",
       "animals/Swallowtail.glb"
@@ -1258,22 +1291,24 @@
         );
         const rotY = Math.atan2(cityCenter.x - pos.x, cityCenter.z - pos.z) + (mIdx - 1) * 0.35;
 
+        const targetGroup = isNature ? plantsGroup : isAnimal ? animalsGroup : peopleGroup;
+        const displayLabel = (!isNature && !isAnimal) ? formatPersonNameOnly(spec.label) : spec.label;
         const uData = {
           pickType: "glb",
-          label: spec.label,
+          label: displayLabel,
           island: isl
         };
 
         if (isAnimal) {
-          spawnRealisticAnimalWithFlock(spec.file, charactersGroup, pos, rotY, animKind, uData);
+          spawnRealisticAnimalWithFlock(spec.file, targetGroup, pos, rotY, animKind, uData);
         } else {
-          spawnGlb(spec.file, charactersGroup, pos, targetH, rotY, animKind, uData);
+          spawnGlb(spec.file, targetGroup, pos, targetH, rotY, animKind, uData);
         }
 
-        // 註冊 3D 角色／動物／植物浮動名牌錨點
+        // 註冊 3D 人物／動物／植物浮動名牌錨點 (人物僅顯示名字)
         ecoLabelTargets.push({
           islandId: isl.id,
-          label: spec.label,
+          label: displayLabel,
           kind: isNature ? "plant" : isAnimal ? "animal" : "char",
           icon: isNature ? "🌿" : isAnimal ? "🐾" : "🧑‍⚕️",
           isPrimary: mIdx === 0 || isAnimal,
@@ -1281,7 +1316,7 @@
         });
       });
 
-      // (B) 每座島額外配置 2 棵 GLB 樹木與 2 叢 GLB 灌木／草本植物
+      // (B) 每座島額外配置 2 棵 GLB 樹木與 2 叢 GLB 灌木／草本植物 -> plantsGroup
       for (let t = 0; t < 2; t++) {
         const cornerIdx = (idx + t * 3 + 1) % 6;
         const [tx, tz] = hexVertex(c.x, c.z, R * 0.76, cornerIdx);
@@ -1289,7 +1324,7 @@
           const treeFile = EXTRA_TREES[(idx + t) % EXTRA_TREES.length];
           spawnGlb(
             treeFile,
-            charactersGroup,
+            plantsGroup,
             new THREE.Vector3(tx, TOP + 0.04, tz),
             getRealisticModelHeight(treeFile, 0.85),
             idx * 0.9 + t,
@@ -1302,7 +1337,7 @@
         const plantFile = EXTRA_PLANTS[(idx + t) % EXTRA_PLANTS.length];
         spawnGlb(
           plantFile,
-          charactersGroup,
+          plantsGroup,
           new THREE.Vector3(bx, TOP + 0.04, bz),
           getRealisticModelHeight(plantFile, 0.24),
           idx * 1.3 + t,
@@ -1311,7 +1346,7 @@
         );
       }
 
-      // (C) 若該島原本無 GLB 動物，補上專屬台灣動物使其每島皆有真實比例動物生態
+      // (C) 若該島原本無 GLB 動物，補上專屬台灣動物使其每島皆有真實比例動物生態 -> animalsGroup
       const hasAnimalAlready = (isl.glbModels || []).some((m) => m.file.startsWith("animals/"));
       const extraAnimal = EXTRA_ANIMALS[idx % EXTRA_ANIMALS.length];
       if (!hasAnimalAlready) {
@@ -1322,7 +1357,7 @@
         const animalPos = new THREE.Vector3(ax, ay, az);
         const realH = spawnRealisticAnimalWithFlock(
           extraAnimal.file,
-          charactersGroup,
+          animalsGroup,
           animalPos,
           idx * 0.8,
           extraAnimal.kind,
@@ -1337,7 +1372,7 @@
         });
       }
 
-      // (D) 政策島風格 (decor.js)：為每座島鋪設多團簇闊葉樹／松樹／花果樹、本草藥圃與花叢
+      // (D) 政策島風格 (decor.js)：為每座島鋪設多團簇闊葉樹／松樹／花果樹、本草藥圃與花叢 -> plantsGroup
       const treeStyles = {
         north: ["round", "conifer", "blossom"],
         taoyuan: ["blossom", "round", "conifer"],
@@ -1362,7 +1397,7 @@
             pickables.push(ch);
           }
         });
-        charactersGroup.add(tMesh);
+        plantsGroup.add(tMesh);
         animatedEntities.push({
           holder: tMesh,
           inner: tMesh,
@@ -1375,7 +1410,7 @@
         plantedTrees++;
       }
 
-      // 每座島設置 2 座「中藥本草百草藥圃」與六角邊緣花圃
+      // 每座島設置 2 座「中藥本草百草藥圃」與六角邊緣花圃 -> plantsGroup
       for (let hb = 0; hb < 2; hb++) {
         const hAng = (hb * Math.PI) + idx * 0.5 + 0.4;
         const hlx = Math.cos(hAng) * (R * 0.52);
@@ -1390,19 +1425,20 @@
               pickables.push(ch);
             }
           });
-          charactersGroup.add(bed);
+          plantsGroup.add(bed);
         }
       }
 
-      // (E) 每座島配置 3 位沿環島步道行走之真實比例藥師／主管／領藥民眾 (高 ~0.255 單位)
+      // (E) 每座島配置 3 位沿環島步道行走之真實比例藥師／主管／領藥民眾 -> peopleGroup (名稱僅顯示名字)
       const islandRoles = ["pharmacist", "doctor", "citizen"];
+      const supFirstName = isl.supervisor.split("、")[0];
       for (let pIdx = 0; pIdx < 3; pIdx++) {
         const role = islandRoles[pIdx % islandRoles.length];
         const roleTitle = role === "pharmacist"
-          ? `${isl.shortName}巡迴中藥師`
+          ? "中藥師"
           : role === "doctor"
-          ? `${isl.supervisor.split("、")[0]}主管團隊`
-          : `${isl.county}領藥民眾`;
+          ? supFirstName
+          : "民眾";
         const accent = [0xdb6a41, 0x3e7c8c, 0x5e9a6f][(idx + pIdx) % 3];
         const person = createChibiPerson(role, accent, islSeed + pIdx * 19);
         person.scale.setScalar(1.0);
@@ -1412,7 +1448,7 @@
             pickables.push(ch);
           }
         });
-        charactersGroup.add(person);
+        peopleGroup.add(person);
 
         // 環繞該島六角外環步道行走
         const ringWaypoints = [];
@@ -1431,7 +1467,7 @@
       }
     });
 
-    // 2) 在跨海拱橋上配置跨院協作行人 (真實人體比例，攜帶藥箱／檢驗箱往返各院區)
+    // 2) 在跨海拱橋上配置跨院協作行人 -> peopleGroup (名稱僅顯示名字)
     DATA.flows.forEach((f, fIdx) => {
       const hqCenter = islandCenters.get("headquarters");
       const firstTarget = islandCenters.get(f.targets[0]);
@@ -1440,17 +1476,18 @@
       const walker = createChibiPerson("pharmacist", colHex, 700 + fIdx * 13);
       walker.scale.setScalar(1.0);
       const hqIsl = DATA.islands.find((i) => i.id === "headquarters");
+      const ownerName = formatPersonNameOnly(f.owner);
       walker.traverse((ch) => {
         if (ch.isMesh) {
           ch.userData = {
             pickType: "glb",
-            label: `${f.code} ${f.category}協作專員（${f.owner}）`,
+            label: ownerName,
             island: hqIsl
           };
           pickables.push(ch);
         }
       });
-      charactersGroup.add(walker);
+      peopleGroup.add(walker);
       walkingPeople.push({
         group: walker,
         waypoints: [
@@ -1464,32 +1501,136 @@
       });
     });
 
-    // 3) 在遠景海面上空點綴 Nature Kit 立體雲朵與遠山島礁
+    // 3) 在遠景海面上空點綴 Nature Kit 立體雲朵與群島周圍自然離島元素 (使用 D:\Users\User\Desktop\3D素材\自然環境 & 鳥類素材)
     const cloudCoords = [
-      [-13.5, 7.2, -13, "nature/Cloud001.glb", 0.68],
-      [14.0, 7.6, -10, "nature/Cloud002.glb", 0.72],
-      [-14.5, 7.0, 8, "nature/Cloud002.glb", 0.65],
-      [13.5, 7.4, 11, "nature/Cloud001.glb", 0.7]
+      [-17.5, 8.2, -16, "nature/Cloud001.glb", 0.78],
+      [18.0, 8.6, -12, "nature/Cloud002.glb", 0.82],
+      [-18.5, 8.0, 10, "nature/Cloud002.glb", 0.75],
+      [17.5, 8.4, 14, "nature/Cloud001.glb", 0.78]
     ];
     cloudCoords.forEach(([x, y, z, file, sc]) => {
       spawnGlb(file, worldGroup, new THREE.Vector3(cityCenter.x + x, y, cityCenter.z + z), sc, 0.3, "cloud", null);
     });
 
-    const mountainCoords = [
-      [16.5, WATER_Y, -6.5, "nature/Mountain001.glb", 1.45],
-      [15.2, WATER_Y, 6.5, "nature/Hill001.glb", 0.55],
-      [-16.0, WATER_Y, -7.0, "nature/Hill001.glb", 0.5]
+    // 群島周圍 10 座特色小島與海岸礁岩 (沙洲、燈塔離島、松林礁島、鵜鶘棲息岩)
+    const surroundingIslets = [
+      { dx: 12.2, dz: -13.5, rad: 1.05, style: "sand",   terrain: "nature/HillSand001.glb", tH: 0.58, tree: "nature/TreeLow003.glb",  bird: "animals/Pelican.glb", label: "🐢 東北龜山意象離島" },
+      { dx: -11.5, dz: -11.2, rad: 0.95, style: "sand",  terrain: "nature/HillSand002.glb", tH: 0.52, tree: "nature/Reed001.glb",     bird: "animals/Pelican.glb", label: "🏖️ 淡水河口沙洲小島" },
+      { dx: 13.8, dz: -4.2,  rad: 1.15, style: "cliff",  terrain: "nature/Mountain001.glb", tH: 1.35, tree: "nature/TreeHigh003.glb", bird: null,                   label: "⛰️ 東部海岸翠峰離島" },
+      { dx: -13.2, dz: -2.0, rad: 0.98, style: "grass",  terrain: "nature/Hill002.glb",     tH: 0.65, tree: "nature/TreeMed003.glb",  bird: "animals/BlueSwan.glb", label: "🌿 西海岸生態保護礁島" },
+      { dx: 12.5, dz: 4.8,   rad: 1.08, style: "cliff",  terrain: "nature/Mountain002.glb", tH: 1.28, tree: "nature/TreeHigh001.glb", bird: null,                   label: "🏝️ 太平洋觀瀾山嶼" },
+      { dx: -12.8, dz: 6.5,  rad: 1.02, style: "sand",   terrain: "nature/Cliff001.glb",    tH: 0.72, tree: "nature/TreeLow001.glb",  bird: "animals/Pelican.glb", label: "🪨 澎湖玄武岩意象小島" },
+      { dx: 11.4, dz: 13.8,  rad: 1.10, style: "grass",  terrain: "nature/Hill003.glb",     tH: 0.70, tree: "nature/TreeMed001.glb",  bird: null,                   label: "🗼 南台灣燈塔守望小島", lighthouse: true },
+      { dx: -10.8, dz: 14.5, rad: 0.92, style: "sand",   terrain: "nature/HillSand001.glb", tH: 0.50, tree: "nature/Reed001.glb",     bird: "animals/Duck.glb",    label: "🪸 小琉球珊瑚礁小島" },
+      { dx: 18.2, dz: -9.5,  rad: 1.25, style: "far",    terrain: "nature/MountainFar001.glb", tH: 1.65, tree: null,                  bird: null,                   label: "🗻 遠洋山嵐礁嶼" },
+      { dx: -17.8, dz: 1.5,  rad: 1.20, style: "far",    terrain: "nature/Cliff002.glb",    tH: 0.88, tree: "nature/Rock003.glb",     bird: null,                   label: "⚓ 海峽守護礁岩" }
     ];
-    mountainCoords.forEach(([x, y, z, file, sc], i) => {
-      spawnGlb(file, worldGroup, new THREE.Vector3(cityCenter.x + x, y, cityCenter.z + z), sc, i * 1.2, "prop", null);
+
+    surroundingIslets.forEach((si, sIdx) => {
+      const ix = cityCenter.x + si.dx;
+      const iz = cityCenter.z + si.dz;
+      const isletHolder = new THREE.Group();
+      isletHolder.position.set(ix, WATER_Y, iz);
+      worldGroup.add(isletHolder);
+
+      // 淺灘環與低矮六角砂岩／草地島基座
+      const reef = new THREE.Mesh(
+        new THREE.CylinderGeometry(si.rad * 1.18, si.rad * 1.26, 0.06, 6),
+        new THREE.MeshBasicMaterial({ color: 0xb7e4e0, transparent: true, opacity: 0.42 })
+      );
+      reef.position.y = 0.03;
+      isletHolder.add(reef);
+
+      const baseCol = si.style === "sand" ? 0xe7d2a8 : si.style === "cliff" ? 0xa38b74 : 0x9db882;
+      const baseMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(si.rad * 0.92, si.rad * 1.04, 0.22, 6),
+        new THREE.MeshStandardMaterial({ color: baseCol, roughness: 0.85, flatShading: true })
+      );
+      baseMesh.position.y = 0.11;
+      baseMesh.receiveShadow = true;
+      baseMesh.castShadow = true;
+      baseMesh.userData = { pickType: "glb", label: si.label, island: DATA.islands[0] };
+      pickables.push(baseMesh);
+      isletHolder.add(baseMesh);
+
+      // 放置 Nature Kit 山丘／沙丘／懸崖／礁岩 GLB
+      if (si.terrain) {
+        spawnGlb(
+          si.terrain,
+          worldGroup,
+          new THREE.Vector3(ix, WATER_Y + 0.16, iz),
+          si.tH,
+          sIdx * 0.9,
+          "prop",
+          { pickType: "glb", label: si.label, island: DATA.islands[0] }
+        );
+      }
+
+      // 點綴離島海岸礁石 (Rock001/002/003)
+      const rockFiles = ["nature/Rock001.glb", "nature/Rock002.glb", "nature/Rock003.glb"];
+      spawnGlb(
+        rockFiles[sIdx % rockFiles.length],
+        worldGroup,
+        new THREE.Vector3(ix + si.rad * 0.55, WATER_Y + 0.15, iz - si.rad * 0.4),
+        0.26,
+        sIdx * 1.4,
+        "prop",
+        null
+      );
+
+      // 點綴離島樹木／蘆葦 -> plantsGroup
+      if (si.tree) {
+        spawnGlb(
+          si.tree,
+          plantsGroup,
+          new THREE.Vector3(ix - si.rad * 0.35, WATER_Y + 0.20, iz + si.rad * 0.32),
+          si.tree.includes("Reed") ? 0.28 : 0.68,
+          sIdx * 0.7,
+          "plant",
+          { pickType: "glb", label: `${si.label}・海岸植栽`, island: DATA.islands[0] }
+        );
+      }
+
+      // 離島海岸水鳥 (鵜鶘／藍天鵝／水鴨) -> animalsGroup
+      if (si.bird) {
+        spawnGlb(
+          si.bird,
+          animalsGroup,
+          new THREE.Vector3(ix + si.rad * 0.32, WATER_Y + 0.21, iz + si.rad * 0.36),
+          getRealisticModelHeight(si.bird, 0.14),
+          sIdx * 1.1,
+          "animal_ground",
+          { pickType: "glb", label: `${si.label}・海岸水鳥`, island: DATA.islands[0] }
+        );
+      }
+
+      // 南台灣離島燈塔小地標
+      if (si.lighthouse) {
+        const lh = new THREE.Group();
+        lh.position.set(ix - 0.3, WATER_Y + 0.22, iz - 0.25);
+        const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.13, 0.55, 8), MAT.cream);
+        tower.position.y = 0.275;
+        tower.castShadow = true;
+        lh.add(tower);
+        const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.105, 0.12, 8), MAT.coral);
+        stripe.position.y = 0.32;
+        lh.add(stripe);
+        const lantern = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.10, 8), MAT.lanternGlow);
+        lantern.position.y = 0.58;
+        lh.add(lantern);
+        const cap = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.12, 8), MAT.coralDark);
+        cap.position.y = 0.68;
+        lh.add(cap);
+        worldGroup.add(lh);
+      }
     });
 
-    // 4) 在近海淺灣配置悠游於海面上的真實比例水鳥 (藍天鵝與綠頭水鴨群)
+    // 4) 在近海淺灣配置悠游於海面上的真實比例水鳥 (藍天鵝與綠頭水鴨群) -> animalsGroup
     const seaBirdSpots = [
-      { islId: "keelung", file: "animals/Duck.glb", label: "基隆港灣綠頭水鴨群", dx: -3.2, dz: -1.8 },
-      { islId: "linkou", file: "animals/BlueSwan.glb", label: "桃園近海悠游藍天鵝", dx: -3.5, dz: 1.2 },
-      { islId: "chiayi", file: "animals/Duck.glb", label: "嘉南近海綠頭水鴨群", dx: -3.3, dz: 0.9 },
-      { islId: "kaohsiung", file: "animals/BlueSwan.glb", label: "澄清湖畔延伸海域藍天鵝", dx: 3.3, dz: 1.5 }
+      { islId: "keelung", file: "animals/Duck.glb", label: "基隆港灣綠頭水鴨群", dx: -3.4, dz: -2.0 },
+      { islId: "linkou", file: "animals/BlueSwan.glb", label: "桃園近海悠游藍天鵝", dx: -3.7, dz: 1.3 },
+      { islId: "chiayi", file: "animals/Duck.glb", label: "嘉南近海綠頭水鴨群", dx: -3.5, dz: 1.0 },
+      { islId: "kaohsiung", file: "animals/BlueSwan.glb", label: "澄清湖畔延伸海域藍天鵝", dx: 3.5, dz: 1.6 }
     ];
     seaBirdSpots.forEach((spot, sIdx) => {
       const c = islandCenters.get(spot.islId);
@@ -1498,7 +1639,7 @@
       const pos = new THREE.Vector3(c.x + spot.dx, WATER_Y + 0.01, c.z + spot.dz);
       spawnRealisticAnimalWithFlock(
         spot.file,
-        marineGroup,
+        animalsGroup,
         pos,
         sIdx * 1.4,
         "animal_ground",
@@ -1742,11 +1883,11 @@
       });
     };
 
-    // (1) 🐋 外海巡游大翅鯨／抹香鯨 (3 頭，含換氣噴水柱與海面波紋)
+    // (1) 🐋 外海巡游大翅鯨／抹香鯨 (3 頭，配合加寬間距配置於外圍深海航道)
     const whaleSpecs = [
-      { cx: cityCenter.x + 8.5, cz: cityCenter.z - 12.2, rx: 3.2, rz: 2.1, speed: 0.22, phase: 0.2, col: 0x2b4c65, scale: 1.24, islId: "keelung", label: "🐋 台灣東北海域・大翅鯨（浮出換氣噴水）" },
-      { cx: cityCenter.x + 9.2, cz: cityCenter.z + 1.5,  rx: 2.6, rz: 3.8, speed: 0.19, phase: 2.1, col: 0x345870, scale: 1.18, islId: "taichung", label: "🐋 台灣海峽洋流・巡游大翅鯨" },
-      { cx: cityCenter.x - 8.2, cz: cityCenter.z + 11.8, rx: 3.4, rz: 2.2, speed: 0.21, phase: 4.0, col: 0x264358, scale: 1.30, islId: "kaohsiung", label: "🐋 南台灣巴士海峽・大翅鯨母子領航" }
+      { cx: cityCenter.x + 10.2, cz: cityCenter.z - 15.0, rx: 3.4, rz: 2.2, speed: 0.22, phase: 0.2, col: 0x2b4c65, scale: 1.24, islId: "keelung", label: "🐋 台灣東北海域・大翅鯨（浮出換氣噴水）" },
+      { cx: cityCenter.x + 11.2, cz: cityCenter.z + 1.8,  rx: 2.8, rz: 4.0, speed: 0.19, phase: 2.1, col: 0x345870, scale: 1.18, islId: "taichung", label: "🐋 台灣海峽洋流・巡游大翅鯨" },
+      { cx: cityCenter.x - 9.8,  cz: cityCenter.z + 14.2, rx: 3.6, rz: 2.3, speed: 0.21, phase: 4.0, col: 0x264358, scale: 1.30, islId: "kaohsiung", label: "🐋 南台灣巴士海峽・大翅鯨母子領航" }
     ];
     whaleSpecs.forEach((ws) => {
       const whale = createWhaleMesh(ws.scale, ws.col);
@@ -1779,11 +1920,11 @@
 
     // (2) 🐬 躍水海豚群 (5 群共 12 隻海豚：包含台灣海峽特有「中華白海豚」與「瓶鼻海豚」，會成群躍出水面並激起白色水花環)
     const dolphinPods = [
-      { cx: cityCenter.x - 6.2, cz: cityCenter.z - 8.5, rx: 2.1, rz: 1.6, speed: 0.65, pink: false, count: 3, islId: "tamsui", label: "🐬 淡水河口外海・躍水瓶鼻海豚群" },
-      { cx: cityCenter.x - 6.8, cz: cityCenter.z - 1.2, rx: 1.9, rz: 2.3, speed: 0.62, pink: true,  count: 3, islId: "taoyuan", label: "🐬 桃園近海・台灣海峽中華白海豚群" },
-      { cx: cityCenter.x - 6.4, cz: cityCenter.z + 5.2, rx: 2.2, rz: 1.8, speed: 0.68, pink: true,  count: 2, islId: "yunlin", label: "🐬 雲嘉外海・珍貴中華白海豚" },
-      { cx: cityCenter.x + 5.8, cz: cityCenter.z - 5.4, rx: 2.0, rz: 1.9, speed: 0.64, pink: false, count: 2, islId: "taipei", label: "🐬 北台灣海灣・瓶鼻海豚群" },
-      { cx: cityCenter.x + 5.2, cz: cityCenter.z + 9.2, rx: 2.3, rz: 1.7, speed: 0.66, pink: false, count: 2, islId: "fengshan", label: "🐬 高屏近海・躍浪海豚群" }
+      { cx: cityCenter.x - 7.8, cz: cityCenter.z - 10.4, rx: 2.2, rz: 1.7, speed: 0.65, pink: false, count: 3, islId: "tamsui", label: "🐬 淡水河口外海・躍水瓶鼻海豚群" },
+      { cx: cityCenter.x - 8.4, cz: cityCenter.z - 1.5,  rx: 2.0, rz: 2.4, speed: 0.62, pink: true,  count: 3, islId: "taoyuan", label: "🐬 桃園近海・台灣海峽中華白海豚群" },
+      { cx: cityCenter.x - 8.0, cz: cityCenter.z + 6.4,  rx: 2.3, rz: 1.9, speed: 0.68, pink: true,  count: 2, islId: "yunlin", label: "🐬 雲嘉外海・珍貴中華白海豚" },
+      { cx: cityCenter.x + 7.4, cz: cityCenter.z - 6.6,  rx: 2.1, rz: 2.0, speed: 0.64, pink: false, count: 2, islId: "taipei", label: "🐬 北台灣海灣・瓶鼻海豚群" },
+      { cx: cityCenter.x + 6.8, cz: cityCenter.z + 11.4, rx: 2.4, rz: 1.8, speed: 0.66, pink: false, count: 2, islId: "fengshan", label: "🐬 高屏近海・躍浪海豚群" }
     ];
     dolphinPods.forEach((pod, pIdx) => {
       const podAnchor = new THREE.Vector3(pod.cx, WATER_Y + 0.35, pod.cz);
@@ -1960,13 +2101,13 @@
         const line = new THREE.Line(geo, lineMat);
         fGroup.add(line);
 
-        // 沿協作線飛行的發光能量球
+        // 沿協作線飛行的發光能量球 (降低移動速度，呈現從容穩健的跨院傳遞節奏)
         const orb = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8), pulseMat);
         fGroup.add(orb);
         flowPulses.push({
           mesh: orb,
           curve,
-          speed: 0.22 + (tIdx % 3) * 0.05,
+          speed: 0.055 + (tIdx % 3) * 0.015,
           offset: (fIdx * 0.17 + tIdx * 0.29) % 1,
           flowId: f.id
         });
@@ -2091,11 +2232,17 @@
       el.classList.toggle("selected", selectedBuildingId === bId);
     });
 
-    // 更新 3D 人物、動物、植物與海域水中生物浮動名牌
+    // 更新 3D 人物、動物、植物與海域水中生物浮動名牌 (依人物/動物/植物三類圖層開關獨立控制)
     ecoLabelEls.forEach(({ el, target }) => {
+      const groupVisible =
+        target.kind === "char"
+          ? peopleGroup.visible
+          : target.kind === "animal"
+          ? animalsGroup.visible
+          : plantsGroup.visible;
       const isSelectedIsl = selectedIslandId === target.islandId;
       const isMarineHighlight = target.icon === "🐋" || target.icon === "🐬";
-      const showEco = charactersGroup.visible && (isSelectedIsl || camDist < 19.5 || (showNames && isMarineHighlight));
+      const showEco = groupVisible && (isSelectedIsl || camDist < 22.0 || (showNames && isMarineHighlight));
       if (!showEco) {
         el.style.display = "none";
         return;
@@ -2979,10 +3126,12 @@
       if (kind === "names") showNames = active;
       if (kind === "pins") showPins = active;
       if (kind === "flows") updateFlowVisibility();
-      if (kind === "chars") {
-        charactersGroup.visible = active;
+      if (kind === "people") peopleGroup.visible = active;
+      if (kind === "animals") {
+        animalsGroup.visible = active;
         marineGroup.visible = active;
       }
+      if (kind === "plants") plantsGroup.visible = active;
       if (kind === "bird") resetOverview(active);
       if (kind === "log") $("#log").hidden = !active;
     });
